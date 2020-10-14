@@ -2,8 +2,6 @@
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
-
-from spack import *
 from six import iteritems
 
 
@@ -18,6 +16,7 @@ class Rust(Package):
 
     homepage = "https://www.rust-lang.org"
     url = "https://static.rust-lang.org/dist/rustc-1.42.0-src.tar.gz"
+    git = "https://github.com/rust-lang/rust.git"
 
     maintainers = ["AndrewGaspar"]
 
@@ -54,12 +53,27 @@ class Rust(Package):
         default=True,
         description='Install Rust source files'
     )
+    variant(
+        'extra_targets', default='none', multi=True,
+        description='Triples for extra targets to enable. For supported targets, see: https://doc.rust-lang.org/nightly/rustc/platform-support.html'
+    )
 
-    depends_on('cmake', type='build')
-    depends_on('python@:2.8', type='build')
+    depends_on('python@2.7:', type='build')
+    depends_on('python@2.7:2.8', when='@:1.43', type='build')
+    depends_on('gmake@3.81:', type='build')
+    depends_on('cmake@3.4.3:', type='build')
+    depends_on('pkgconfig', type='build')
     depends_on('openssl')
     depends_on('libssh2')
     depends_on('libgit2')
+
+    # Pre-release Versions
+    version('master', branch='master', submodules=True)
+
+    # These version strings are officially supported, but aren't explicitly
+    # listed because there's no stable checksum for them.
+    # version('nightly')
+    # version('beta')
 
     # Version Notes:
     # Here's some information on why your favorite Rust version may be missing.
@@ -73,6 +87,13 @@ class Rust(Package):
     # The `x.py` bootstrapping script did not exist prior to Rust 1.17. It
     # would be possible to support both, but for simplicitly, we only support
     # Rust 1.17 and newer
+    version('1.47.0', sha256='3185df064c4747f2c8b9bb8c4468edd58ff4ad6d07880c879ac1b173b768d81d')
+    version('1.46.0', sha256='2d6a3b7196db474ba3f37b8f5d50a1ecedff00738d7846840605b42bfc922728')
+    version('1.45.1', sha256='ea53e6424e3d1fe56c6d77a00e72c5d594b509ec920c5a779a7b8e1dbd74219b')
+    version('1.44.1', sha256='7e2e64cb298dd5d5aea52eafe943ba0458fa82f2987fdcda1ff6f537b6f88473')
+    version('1.44.0', sha256='bf2df62317e533e84167c5bc7d4351a99fdab1f9cd6e6ba09f51996ad8561100')
+    version('1.43.1', sha256='cde177b4a8c687da96f20de27630a1eb55c9d146a15e4c900d5c31cd3c3ac41d')
+    version('1.43.0', sha256='75f6ac6c9da9f897f4634d5a07be4084692f7ccc2d2bb89337be86cfc18453a1')
     version('1.42.0', sha256='d2e8f931d16a0539faaaacd801e0d92c58df190269014b2360c6ab2a90ee3475')
     version('1.41.1', sha256='38c93d016e6d3e083aa15e8f65511d3b4983072c0218a529f5ee94dd1de84573')
     version('1.41.0', sha256='5546822c09944c4d847968e9b7b3d0e299f143f307c00fa40e84a99fabf8d74b')
@@ -112,6 +133,48 @@ class Rust(Package):
     # This dictionary contains a version: hash dictionary for each supported
     # Rust target.
     rust_releases = {
+        '1.47.0': {
+            'x86_64-unknown-linux-gnu':      'd0e11e1756a072e8e246b05d54593402813d047d12e44df281fbabda91035d96',
+            'powerpc64le-unknown-linux-gnu': '5760c3b1897ea70791320c2565f3eef700a3d54059027b84bbe6b8d6157f81c8',
+            'aarch64-unknown-linux-gnu':     '753c905e89a714ab9bce6fe1397b721f29c0760c32f09d2f328af3d39919c8e6',
+            'x86_64-apple-darwin':           '84e5be6c5c78734deba911dcf80316be1e4c7da2c59413124d039ad96620612f'
+        },
+        '1.46.0': {
+            'x86_64-unknown-linux-gnu':      'e3b98bc3440fe92817881933f9564389eccb396f5f431f33d48b979fa2fbdcf5',
+            'powerpc64le-unknown-linux-gnu': '89e2f4761d257f017a4b6aa427f36ac0603195546fa2cfded8c899789832941c',
+            'aarch64-unknown-linux-gnu':     'f0c6d630f3dedb3db69d69ed9f833aa6b472363096f5164f1068c7001ca42aeb',
+            'x86_64-apple-darwin':           '82d61582a3772932432a99789c3b3bd4abe6baca339e355048ca9efb9ea5b4db'
+        },
+        '1.45.1': {
+            'x86_64-unknown-linux-gnu':      '76dc9f05b3bfd0465d6e6d22bc9fd5db0b473e3548e8b3d266ecfe4d9e5dca16',
+            'powerpc64le-unknown-linux-gnu': '271846e4f5adc9a33754794c2ffab851f9e0313c8c1315264e7db5c8f63ab7ab',
+            'aarch64-unknown-linux-gnu':     'd17fd560e8d5d12304835b71a7e22ac2c3babf4b9768db6a0e89868b4444f728',
+            'x86_64-apple-darwin':           '7334c927e4d2d12d209bf941b97ba309e548413e241d2d263c39c6e12b3ce154'
+        },
+        '1.44.1': {
+            'x86_64-unknown-linux-gnu':      'a41df89a461a580536aeb42755e43037556fba2e527dd13a1e1bb0749de28202',
+            'powerpc64le-unknown-linux-gnu': '22deeca259459db31065af7c862fcab7fbfb623200520c65002ed2ba93d87ad2',
+            'aarch64-unknown-linux-gnu':     'a2d74ebeec0b6778026b6c37814cdc91d14db3b0d8b6d69d036216f4d9cf7e49',
+            'x86_64-apple-darwin':           'a5464e7bcbce9647607904a4afa8362382f1fc55d39e7bbaf4483ac00eb5d56a'
+        },
+        '1.44.0': {
+            'x86_64-unknown-linux-gnu':      'eaa34271b4ac4d2c281831117d4d335eed0b37fe7a34477d9855a6f1d930a624',
+            'powerpc64le-unknown-linux-gnu': '97038ea935c7a5b21f5aaaaad409c514e2b2ae8ea55994ba39645f453e98bc9f',
+            'aarch64-unknown-linux-gnu':     'bcc916003cb9c7ff44f5f9af348020b422dbc5bd4fe49bdbda2de6ce0a1bb745',
+            'x86_64-apple-darwin':           'f20388b80b2b0a8b122d89058f785a2cf3b14e93bcac53471d60fdb4106ffa35'
+        },
+        '1.43.1': {
+            'x86_64-unknown-linux-gnu':      '25cd71b95bba0daef56bad8c943a87368c4185b90983f4412f46e3e2418c0505',
+            'powerpc64le-unknown-linux-gnu': '1670f00b00cc1bed38d523a25dba7420de3c06986c15a0248e06299f80ce6124',
+            'aarch64-unknown-linux-gnu':     'fbb612387a64c9da2869725afffc1f66a72d6e7ba6667ba717cd52c33080b7fb',
+            'x86_64-apple-darwin':           'e1c3e1426a9e615079159d6b619319235e3ca7b395e7603330375bfffcbb7003'
+        },
+        '1.43.0': {
+            'x86_64-unknown-linux-gnu':      '069f34fa5cef92551724c83c36360df1ac66fe3942bc1d0e4d341ce79611a029',
+            'powerpc64le-unknown-linux-gnu': 'c75c7ae4c94715fd6cc43d1d6fdd0952bc151f7cbe3054f66d99a529d5bb996f',
+            'aarch64-unknown-linux-gnu':     'e5fa55f333c10cdae43d147438a80ffb435d6c7b9681cd2e2f0857c024556856',
+            'x86_64-apple-darwin':           '504e8efb2cbb36f5a3db7bb36f339a1e5216082c910ad19039c370505cfbde99'
+        },
         '1.42.0': {
             'x86_64-unknown-linux-gnu':      '7d1e07ad9c8a33d8d039def7c0a131c5917aa3ea0af3d0cc399c6faf7b789052',
             'powerpc64le-unknown-linux-gnu': '805b08fa1e0aad4d706301ca1f13e2d80810d385cece2c15070360b3c4bd6e4a',
@@ -320,6 +383,37 @@ class Rust(Package):
         ]
     }
 
+    # Specifies the strings which represent a pre-release Rust version. These
+    # always bootstrap with the latest beta release.
+    #
+    # NOTE: These are moving targets, and therefore have no stable checksum. Be
+    # sure to specify "-n" or "--no-checksum" when installing these versions.
+    rust_prerelease_versions = ["beta", "nightly", "master"]
+
+    for prerelease_version in rust_prerelease_versions:
+        for rust_target, rust_arch_list in iteritems(rust_archs):
+            for rust_arch in rust_arch_list:
+                # All pre-release builds are built with the latest beta
+                # compiler.
+                resource(
+                    name='rust-beta-{target}'.format(
+                        target=rust_target
+                    ),
+                    url='https://static.rust-lang.org/dist/rust-beta-{target}.tar.gz'.format(
+                        target=rust_target
+                    ),
+                    # Fake SHA - checksums should never be checked for
+                    # pre-release builds, anyway
+                    sha256='0000000000000000000000000000000000000000000000000000000000000000',
+                    destination='spack_bootstrap_stage',
+                    when='@{version} platform={platform} target={target}'\
+                    .format(
+                        version=prerelease_version,
+                        platform=rust_arch['platform'],
+                        target=rust_arch['target']
+                    )
+                )
+
     # This loop generates resources for each binary distribution, and maps
     # them to the version of the compiler they bootstrap. This is in place
     # of listing each resource explicitly, which would be potentially even
@@ -344,11 +438,11 @@ class Rust(Package):
                     sha256=rust_sha256,
                     destination='spack_bootstrap_stage',
                     when='@{version} platform={platform} target={target}'\
-                        .format(
-                            version=rust_version,
-                            platform=rust_arch['platform'],
-                            target=rust_arch['target']
-                        )
+                    .format(
+                        version=rust_version,
+                        platform=rust_arch['platform'],
+                        target=rust_arch['target']
+                    )
                 )
 
     # This routine returns the target architecture we intend to build for.
@@ -368,14 +462,30 @@ class Rust(Package):
                 self.spec.architecture
             ))
 
+    def check_newer(self, version):
+        if '@master' in self.spec or '@beta' in self.spec or \
+           '@nightly' in self.spec:
+            return True
+
+        return '@{0}:'.format(version) in self.spec
+
     def configure(self, spec, prefix):
         target = self.get_rust_target()
+
+        # Bootstrapping compiler selection:
+        # Pre-release compilers use the latest beta release for the
+        # bootstrapping compiler.
+        # Versioned releases bootstrap themselves.
+        if '@beta' in spec or '@nightly' in spec or '@master' in spec:
+            bootstrap_version = 'beta'
+        else:
+            bootstrap_version = spec.version
         # See the NOTE above the resource loop - should be host architecture,
         # not target aarchitecture if we're to support cross-compiling.
         bootstrapping_install = Executable(
             './spack_bootstrap_stage/rust-{version}-{target}/install.sh'
             .format(
-                version=spec.version,
+                version=bootstrap_version,
                 target=target
             )
         )
@@ -402,8 +512,20 @@ class Rust(Package):
 
         ar = which('ar', required=True)
 
+        extra_targets = []
+        if self.spec.variants['extra_targets'].value != 'none':
+            extra_targets = list(self.spec.variants['extra_targets'].value)
+
+        targets = [self.get_rust_target()] + extra_targets
+        target_spec = 'target=[' + \
+            ','.join('"{0}"'.format(target) for target in targets) + ']'
+        target_specs = '\n'.join(
+            '[target.{0}]\nar = "{1}"\n'.format(target, ar.path)
+            for target in targets)
+
         # build.tools was introduced in Rust 1.25
-        tools_spec = 'tools={0}'.format(tools) if '@1.25:' in self.spec else ''
+        tools_spec = \
+            'tools={0}'.format(tools) if self.check_newer('1.25') else ''
         # This is a temporary fix due to rust 1.42 breaking self bootstrapping
         # See: https://github.com/rust-lang/rust/issues/69953
         #
@@ -412,6 +534,18 @@ class Rust(Package):
         # the latest set of warning.
         deny_warnings_spec = \
             'deny-warnings = false' if '@1.42.0' in self.spec else ''
+
+        # "Nightly" and master builds want a path to rustfmt - otherwise, it
+        # will try to download rustfmt from the Internet. We'll give it rustfmt
+        # for the bootstrapping compiler, but it ultimately shouldn't matter
+        # because this package never invokes it. To be clear, rustfmt from the
+        # bootstrapping compiler is probably incorrect. See: src/stage0.txt in
+        # Rust to see what the current "official" rustfmt version for Rust is.
+        if '@master' in spec or '@nightly' in spec:
+            rustfmt_spec = \
+                'rustfmt="{0}"'.format(join_path(boot_bin, 'rustfmt'))
+        else:
+            rustfmt_spec = ''
 
         with open('config.toml', 'w') as out_file:
             out_file.write("""\
@@ -422,15 +556,16 @@ docs = false
 vendor = true
 extended = true
 verbose = 2
+{target_spec}
 {tools_spec}
+{rustfmt_spec}
 
 [rust]
 channel = "stable"
 rpath = true
 {deny_warnings_spec}
 
-[target.{target}]
-ar = "{ar}"
+{target_specs}
 
 [install]
 prefix = "{prefix}"
@@ -439,10 +574,11 @@ sysconfdir = "etc"
                 cargo=join_path(boot_bin, 'cargo'),
                 rustc=join_path(boot_bin, 'rustc'),
                 prefix=prefix,
-                target=target,
                 deny_warnings_spec=deny_warnings_spec,
-                ar=ar.path,
-                tools_spec=tools_spec
+                target_spec=target_spec,
+                target_specs=target_specs,
+                tools_spec=tools_spec,
+                rustfmt_spec=rustfmt_spec
             )
             )
 

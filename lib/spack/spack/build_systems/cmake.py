@@ -314,7 +314,8 @@ class CMakePackage(PackageBase):
 
         :return: directory where to build the package
         """
-        return os.path.join(self.stage.path, 'spack-build')
+        dirname = 'spack-build-%s' % self.spec.dag_hash(7)
+        return os.path.join(self.stage.path, dirname)
 
     def cmake_args(self):
         """Produces a list containing all the arguments that must be passed to
@@ -331,9 +332,9 @@ class CMakePackage(PackageBase):
 
     def cmake(self, spec, prefix):
         """Runs ``cmake`` in the build directory"""
-        options = [os.path.abspath(self.root_cmakelists_dir)]
-        options += self.std_cmake_args
+        options = self.std_cmake_args
         options += self.cmake_args()
+        options.append(os.path.abspath(self.root_cmakelists_dir))
         with working_dir(self.build_directory, create=True):
             inspect.getmodule(self).cmake(*options)
 

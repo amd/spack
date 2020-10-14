@@ -18,6 +18,7 @@ class EcpProxyApps(BundlePackage):
 
     homepage = "https://proxyapps.exascaleproject.org"
 
+    version('4.0')
     version('3.0')
     version('2.1')
     version('2.0')
@@ -27,13 +28,17 @@ class EcpProxyApps(BundlePackage):
     variant('candle', default=False,
             description='Also build CANDLE Benchmarks')
 
+    # Added with release 4.0
+    depends_on('miniamr@1.6.4', when='@4.0:')
+
     # Added with release 3.0
-    depends_on('miniamr@1.4.4', when='@3.0:')
+    depends_on('miniamr@1.4.4', when='@3.0:3.1')
     depends_on('xsbench@19', when='@3.0:')
+    depends_on('laghos@3.0', when='@3.0:')
 
     # Added with release 2.1
     depends_on('amg@1.2', when='@2.1:')
-    depends_on('miniamr@1.4.3', when='@2.1:')
+    depends_on('miniamr@1.4.3', when='@2.1')
 
     # Added with release 2.0
     depends_on('ember@1.0.0', when='@2.0:')
@@ -43,7 +48,7 @@ class EcpProxyApps(BundlePackage):
     depends_on('thornado-mini@1.0', when='@2.0:')
 
     depends_on('candle-benchmarks@0.1', when='+candle @2.0:2.1')
-    depends_on('laghos@2.0', when='@2.0:')
+    depends_on('laghos@2.0', when='@2.0:2.1')
     depends_on('macsio@1.1', when='@2.0:')
     depends_on('sw4lite@1.1', when='@2.0:')
     depends_on('xsbench@18', when='@2.0:2.1')

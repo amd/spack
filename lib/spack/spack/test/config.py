@@ -23,22 +23,22 @@ import spack.schema.packages
 import spack.schema.mirrors
 import spack.schema.repos
 import spack.util.spack_yaml as syaml
-from spack.util.path import canonicalize_path
+import spack.util.path as spack_path
 
 
 # sample config data
 config_low = {
     'config': {
-        'install_tree': 'install_tree_path',
+        'install_tree': {'root': 'install_tree_path'},
         'build_stage': ['path1', 'path2', 'path3']}}
 
 config_override_all = {
     'config:': {
-        'install_tree:': 'override_all'}}
+        'install_tree:': {'root': 'override_all'}}}
 
 config_override_key = {
     'config': {
-        'install_tree:': 'override_key'}}
+        'install_tree:': {'root': 'override_key'}}}
 
 config_merge_list = {
     'config': {
@@ -272,31 +272,31 @@ def test_substitute_config_variables(mock_low_high_config):
 
     assert os.path.join(
         '/foo/bar/baz', prefix
-    ) == canonicalize_path('/foo/bar/baz/$spack')
+    ) == spack_path.canonicalize_path('/foo/bar/baz/$spack')
 
     assert os.path.join(
         spack.paths.prefix, 'foo/bar/baz'
-    ) == canonicalize_path('$spack/foo/bar/baz/')
+    ) == spack_path.canonicalize_path('$spack/foo/bar/baz/')
 
     assert os.path.join(
         '/foo/bar/baz', prefix, 'foo/bar/baz'
-    ) == canonicalize_path('/foo/bar/baz/$spack/foo/bar/baz/')
+    ) == spack_path.canonicalize_path('/foo/bar/baz/$spack/foo/bar/baz/')
 
     assert os.path.join(
         '/foo/bar/baz', prefix
-    ) == canonicalize_path('/foo/bar/baz/${spack}')
+    ) == spack_path.canonicalize_path('/foo/bar/baz/${spack}')
 
     assert os.path.join(
         spack.paths.prefix, 'foo/bar/baz'
-    ) == canonicalize_path('${spack}/foo/bar/baz/')
+    ) == spack_path.canonicalize_path('${spack}/foo/bar/baz/')
 
     assert os.path.join(
         '/foo/bar/baz', prefix, 'foo/bar/baz'
-    ) == canonicalize_path('/foo/bar/baz/${spack}/foo/bar/baz/')
+    ) == spack_path.canonicalize_path('/foo/bar/baz/${spack}/foo/bar/baz/')
 
     assert os.path.join(
         '/foo/bar/baz', prefix, 'foo/bar/baz'
-    ) != canonicalize_path('/foo/bar/baz/${spack/foo/bar/baz/')
+    ) != spack_path.canonicalize_path('/foo/bar/baz/${spack/foo/bar/baz/')
 
 
 packages_merge_low = {
@@ -345,17 +345,41 @@ def test_merge_with_defaults(mock_low_high_config, write_config_file):
 
 def test_substitute_user(mock_low_high_config):
     user = getpass.getuser()
-    assert '/foo/bar/' + user + '/baz' == canonicalize_path(
+    assert '/foo/bar/' + user + '/baz' == spack_path.canonicalize_path(
         '/foo/bar/$user/baz'
     )
 
 
 def test_substitute_tempdir(mock_low_high_config):
     tempdir = tempfile.gettempdir()
-    assert tempdir == canonicalize_path('$tempdir')
-    assert tempdir + '/foo/bar/baz' == canonicalize_path(
+    assert tempdir == spack_path.canonicalize_path('$tempdir')
+    assert tempdir + '/foo/bar/baz' == spack_path.canonicalize_path(
         '$tempdir/foo/bar/baz'
     )
+
+
+def test_substitute_padding(mock_low_high_config):
+    max_system_path = spack_path.get_system_path_max()
+    expected_length = (max_system_path -
+                       spack_path.SPACK_MAX_INSTALL_PATH_LENGTH)
+
+    install_path = spack_path.canonicalize_path('/foo/bar/${padding}/baz')
+
+    assert spack_path.SPACK_PATH_PADDING_CHARS in install_path
+    assert len(install_path) == expected_length
+
+    install_path = spack_path.canonicalize_path('/foo/bar/baz/gah/$padding')
+
+    assert spack_path.SPACK_PATH_PADDING_CHARS in install_path
+    assert len(install_path) == expected_length
+
+    i_path = spack_path.canonicalize_path('/foo/$padding:10')
+    i_expect = os.path.join('/foo', spack_path.SPACK_PATH_PADDING_CHARS[:10])
+    assert i_path == i_expect
+
+    i_path = spack_path.canonicalize_path('/foo/${padding:20}')
+    i_expect = os.path.join('/foo', spack_path.SPACK_PATH_PADDING_CHARS[:20])
+    assert i_path == i_expect
 
 
 def test_read_config(mock_low_high_config, write_config_file):
@@ -367,7 +391,9 @@ def test_read_config_override_all(mock_low_high_config, write_config_file):
     write_config_file('config', config_low, 'low')
     write_config_file('config', config_override_all, 'high')
     assert spack.config.get('config') == {
-        'install_tree': 'override_all'
+        'install_tree': {
+            'root': 'override_all'
+        }
     }
 
 
@@ -375,7 +401,9 @@ def test_read_config_override_key(mock_low_high_config, write_config_file):
     write_config_file('config', config_low, 'low')
     write_config_file('config', config_override_key, 'high')
     assert spack.config.get('config') == {
-        'install_tree': 'override_key',
+        'install_tree': {
+            'root': 'override_key'
+        },
         'build_stage': ['path1', 'path2', 'path3']
     }
 
@@ -384,7 +412,9 @@ def test_read_config_merge_list(mock_low_high_config, write_config_file):
     write_config_file('config', config_low, 'low')
     write_config_file('config', config_merge_list, 'high')
     assert spack.config.get('config') == {
-        'install_tree': 'install_tree_path',
+        'install_tree': {
+            'root': 'install_tree_path'
+        },
         'build_stage': ['patha', 'pathb', 'path1', 'path2', 'path3']
     }
 
@@ -393,7 +423,9 @@ def test_read_config_override_list(mock_low_high_config, write_config_file):
     write_config_file('config', config_low, 'low')
     write_config_file('config', config_override_list, 'high')
     assert spack.config.get('config') == {
-        'install_tree': 'install_tree_path',
+        'install_tree': {
+            'root': 'install_tree_path'
+        },
         'build_stage': config_override_list['config']['build_stage:']
     }
 
@@ -402,7 +434,7 @@ def test_internal_config_update(mock_low_high_config, write_config_file):
     write_config_file('config', config_low, 'low')
 
     before = mock_low_high_config.get('config')
-    assert before['install_tree'] == 'install_tree_path'
+    assert before['install_tree']['root'] == 'install_tree_path'
 
     # add an internal configuration scope
     scope = spack.config.InternalConfigScope('command_line')
@@ -411,12 +443,12 @@ def test_internal_config_update(mock_low_high_config, write_config_file):
     mock_low_high_config.push_scope(scope)
 
     command_config = mock_low_high_config.get('config', scope='command_line')
-    command_config['install_tree'] = 'foo/bar'
+    command_config['install_tree'] = {'root': 'foo/bar'}
 
     mock_low_high_config.set('config', command_config, scope='command_line')
 
     after = mock_low_high_config.get('config')
-    assert after['install_tree'] == 'foo/bar'
+    assert after['install_tree']['root'] == 'foo/bar'
 
 
 def test_internal_config_filename(mock_low_high_config, write_config_file):
@@ -552,7 +584,7 @@ def get_config_error(filename, schema, yaml_string):
 
     # parse and return error, or fail.
     try:
-        spack.config._read_config_file(filename, schema)
+        spack.config.read_config_file(filename, schema)
     except spack.config.ConfigFormatError as e:
         return e
     else:
@@ -690,12 +722,13 @@ def test_immutable_scope(tmpdir):
     with open(config_yaml, 'w') as f:
         f.write("""\
 config:
-    install_tree: dummy_tree_value
+    install_tree:
+      root: dummy_tree_value
 """)
     scope = spack.config.ImmutableConfigScope('test', str(tmpdir))
 
     data = scope.get_section('config')
-    assert data['config']['install_tree'] == 'dummy_tree_value'
+    assert data['config']['install_tree'] == {'root': 'dummy_tree_value'}
 
     with pytest.raises(spack.config.ConfigError):
         scope.write_section('config')
@@ -765,6 +798,15 @@ env:
         assert not spack.config.get('packages:externalmodule')
         assert spack.config.get('repos') == [
             '/x/y/z', '$spack/var/spack/repos/builtin']
+
+
+def test_write_empty_single_file_scope(tmpdir):
+    env_schema = spack.schema.env.schema
+    scope = spack.config.SingleFileScope(
+        'test', str(tmpdir.ensure('config.yaml')), env_schema, ['spack'])
+    scope.write_section('config')
+    # confirm we can write empty config
+    assert not scope.get_section('config')
 
 
 def check_schema(name, file_contents):

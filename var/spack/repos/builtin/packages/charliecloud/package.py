@@ -9,13 +9,14 @@ from spack import *
 class Charliecloud(AutotoolsPackage):
     """Lightweight user-defined software stacks for HPC."""
 
-    maintainers = ['j-ogas']
+    maintainers = ['j-ogas', 'reidpr']
     homepage = "https://hpc.github.io/charliecloud"
-    url      = "https://github.com/hpc/charliecloud/releases/download/v0.14/charliecloud-0.9.10.tar.gz"
+    url      = "https://github.com/hpc/charliecloud/releases/download/v0.18/charliecloud-0.18.tar.gz"
     git      = "https://github.com/hpc/charliecloud.git"
 
     version('master', branch='master')
-    version('0.14',   sha256='4ae23c2d6442949e16902f9d5604dbd1d6059aeb5dd461b11fc5c74d49dcb194')
+    version('0.19',   sha256='99619fd86860cda18f7f7a7cf7391f702ec9ebd3193791320dea647769996447')
+    version('0.18',   sha256='15ce63353afe1fc6bcc10979496a54fcd5628f997cb13c827c9fc7afb795bdc5')
 
     depends_on('m4',       type='build')
     depends_on('autoconf', type='build')
@@ -26,21 +27,29 @@ class Charliecloud(AutotoolsPackage):
     depends_on('py-lark-parser', type='run')
     depends_on('py-requests',    type='run')
 
-    # man pages and html docs variant
+    # Man pages and html docs variant.
     variant('docs', default=False, description='Build man pages and html docs')
     depends_on('rsync',               type='build', when='+docs')
     depends_on('py-sphinx',           type='build', when='+docs')
     depends_on('py-sphinx-rtd-theme', type='build', when='+docs')
 
-    # bash automated testing harness (bats)
+    # See https://github.com/spack/spack/pull/16049.
+    conflicts('platform=darwin', msg='This package does not build on macOS')
+
+    # Bash automated testing harness (bats).
     depends_on('bats@0.4.0', type='test')
 
     def configure_args(self):
 
         args = []
+        py_path = self.spec['python'].command.path
+        args.append('--with-python={0}'.format(py_path))
 
         if '+docs' in self.spec:
+            sphinx_bin = '{0}'.format(self.spec['py-sphinx'].prefix.bin)
             args.append('--enable-html')
+            args.append('--with-sphinx-build={0}'.format(sphinx_bin.join(
+                                                         'sphinx-build')))
         else:
             args.append('--disable-html')
 
