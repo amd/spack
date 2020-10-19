@@ -15,7 +15,7 @@
 # -------------------------------------------------------------------------
 packages:
   all:
-    compiler: [gcc, intel, pgi, clang, xl, nag, fj]
+    compiler: [gcc, intel, pgi, clang, xl, nag, fj, aocc]
     providers:
       D: [ldc]
       awk: [gawk]
@@ -23,7 +23,6 @@ packages:
       daal: [intel-daal]
       elf: [elfutils]
       fftw-api: [fftw]
-      flame: [libflame]
       gl: [mesa+opengl, opengl]
       glx: [mesa+glx, opengl]
       glu: [mesa-glu, openglu]
