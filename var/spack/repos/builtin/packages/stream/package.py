@@ -17,7 +17,7 @@ class Stream(MakefilePackage):
     version('5.10')
 
     variant('openmp', default=False, description='Build with OpenMP support')
-    variant('STREAM_ARRAY_SIZE',default=2500000000,description='Please note that this is system specific setting, please modify it if you want to compile it with different STREAM ARRAY SIZE other than "2500000000". Currently this variant has effect only with AOCC compiler.General recommendation is that STREAM_ARRAY_SIZE must be at least 4x the size of the sum of all the last-level caches in the system')
+    variant('STREAM_ARRAY_SIZE', default=2500000000, description='Please note that this is system specific setting, please modify it if you want to compile it with different STREAM ARRAY SIZE other than "2500000000". Currently this variant has effect only with AOCC compiler.General recommendation is that STREAM_ARRAY_SIZE must be at least 4x the size of the sum of all the last-level caches in the system')
 
     def edit(self, spec, prefix):
         makefile = FileFilter('Makefile')
@@ -27,7 +27,13 @@ class Stream(MakefilePackage):
         makefile.filter('FC = .*', 'FC = f77')
 
         if self.compiler.name == 'aocc':
-            loc_flags = "-O3 -mcmodel=large -DSTREAM_TYPE=double -mavx2 -DSTREAM_ARRAY_SIZE={} -DNTIMES=10 -ffp-contract=fast -march=znver2 -fnt-store {}".format(self.spec.variants['STREAM_ARRAY_SIZE'].value,self.compiler.openmp_flag)
+            omp_flag = self.compiler.openmp_flag
+            array_size = self.spec.variants['STREAM_ARRAY_SIZE'].value
+            loc_flags = "-O3 -mcmodel=large -DSTREAM_TYPE=double \
+                         -mavx2 -DSTREAM_ARRAY_SIZE={} \
+                         -DNTIMES=10 -ffp-contract=fast \
+                         -march=znver2 \
+                         -fnt-store {}".format(array_size, omp_flag)
             cflags = loc_flags
             fflags = loc_flags
         else:
@@ -37,7 +43,6 @@ class Stream(MakefilePackage):
         if '+openmp' in self.spec and self.compiler.name != 'aocc':
             cflags += ' ' + self.compiler.openmp_flag
             fflags += ' ' + self.compiler.openmp_flag
-
 
         # Set the appropriate flags for this compiler
         makefile.filter('CFLAGS = .*', 'CFLAGS = {0}'.format(cflags))

@@ -34,29 +34,27 @@ class Amdlibflame(LibflameBase):
     url = "https://github.com/amd/libflame/archive/2.2.tar.gz"
     git = "https://github.com/amd/libflame.git"
 
+    maintainers = ['amd-toolchain-support']
+
     version('2.2', sha256='12b9c1f92d2c2fa637305aaa15cf706652406f210eaa5cbc17aaea9fcfa576dc')
 
     patch('aocc-2.2.0.patch', when="@:2.999", level=1)
 
     provides('flame@5.2', when='@2:')
 
-    depends_on('blas')
-
     @property
     def lapack_libs(self):
         """find lapack_libs function"""
         shared = True if '+shared' in self.spec else False
-        return find_libraries('libflame', root=self.prefix, shared=shared, recursive=True)
+        return find_libraries(
+            'libflame', root=self.prefix, shared=shared, recursive=True
+        )
 
     def configure_args(self):
         """configure_args function"""
         args = super(Amdlibflame, self).configure_args()
         args.append("--enable-external-lapack-interfaces")
         return args
-
-    def build(self, spec, prefix):
-        """make function"""
-        make()
 
     def install(self, spec, prefix):
         """make install function"""
