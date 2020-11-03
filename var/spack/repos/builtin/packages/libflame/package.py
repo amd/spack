@@ -57,9 +57,9 @@ class LibflameBase(AutotoolsPackage):
             flags.append('-std=gnu99')
         return (flags, None, None)
 
-    def enable_or_disable_threads(self, variant, options):
+    def enable_or_disable_threads(self):
         opt_val = self.spec.variants['threads'].value
-        if variant_val == 'none':
+        if opt_val == 'none':
             opt_val = 'no'
         return ['--enable-multithreading={0}'.format(opt_val)]
 
@@ -89,9 +89,9 @@ class LibflameBase(AutotoolsPackage):
         else:
             config_args.append("--disable-debug")
 
-        config_args.extend(self.enable_or_disable('threads'))
+        config_args.extend(self.enable_or_disable_threads())
 
-        if 'none' != self.spec.variants['threads'].value:
+        if self.spec.variants['threads'].value != 'none':
             config_args.append("--enable-supermatrix")
         else:
             config_args.append("--disable-supermatrix")
@@ -107,6 +107,7 @@ class LibflameBase(AutotoolsPackage):
         if self.spec.satisfies('platform=darwin'):
             fix_darwin_install_name(self.prefix.lib)
 
+
 class Libflame(LibflameBase):
     """libflame is a portable library for dense matrix computations,
     providing much of the functionality present in LAPACK, developed
@@ -117,11 +118,12 @@ class Libflame(LibflameBase):
     includes a complete LAPACK implementation."""
 
     homepage = "https://www.cs.utexas.edu/~flame/web/libFLAME.html"
-    url      = "https://github.com/flame/libflame/archive/5.1.0.tar.gz"
-    git      = "https://github.com/flame/libflame.git"
+    url = "https://github.com/flame/libflame/archive/5.1.0.tar.gz"
+    git = "https://github.com/flame/libflame.git"
 
     version('master', branch='master')
     version('5.2.0', sha256='997c860f351a5c7aaed8deec00f502167599288fd0559c92d5bfd77d0b4d475c')
     version('5.1.0', sha256='e7189b750890bd781fe773f366b374518dd1d89a6513d3d6261bf549826384d1')
 
     provides('flame@5.2', when='@5.2.0')
+    provides('flame@5.1', when='@5.1.0')

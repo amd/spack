@@ -22,14 +22,9 @@ class FftwBase(AutotoolsPackage):
     )
     variant('openmp', default=False, description="Enable OpenMP support.")
     variant('mpi', default=True, description='Activate MPI support')
-    variant(
-        'pfft_patches', default=False,
-        description='Add extra transpose functions for PFFT compatibility')
 
     depends_on('mpi', when='+mpi')
-    depends_on('automake', type='build', when='+pfft_patches')
-    depends_on('autoconf', type='build', when='+pfft_patches')
-    depends_on('libtool', type='build', when='+pfft_patches')
+    depends_on('llvm-openmp', when='%apple-clang +openmp')
 
     # https://github.com/FFTW/fftw3/commit/902d0982522cdf6f0acd60f01f59203824e8e6f3
     conflicts('%gcc@8:8.9999', when="@3.3.7")
@@ -37,10 +32,6 @@ class FftwBase(AutotoolsPackage):
               msg='Long double precision is not supported in FFTW 2')
     conflicts('precision=quad', when='@2.1.5',
               msg='Quad precision is not supported in FFTW 2')
-    conflicts('+openmp', when='%apple-clang', msg="Apple's clang does not support OpenMP")
-
-    provides('fftw-api@2', when='@2.1.5')
-    provides('fftw-api@3', when='@3:')
 
     @property
     def libs(self):
@@ -120,6 +111,20 @@ class FftwBase(AutotoolsPackage):
         # float only
         float_simd_features = ['altivec', 'sse']
 
+        # Workaround NVIDIA compiler bug when avx512 is enabled
+        if spec.satisfies('%nvhpc') and 'avx512' in simd_features:
+            simd_features.remove('avx512')
+
+        # NVIDIA compiler does not support Altivec intrinsics
+        if spec.satisfies('%nvhpc') and 'vsx' in simd_features:
+            simd_features.remove('vsx')
+        if spec.satisfies('%nvhpc') and 'altivec' in float_simd_features:
+            float_simd_features.remove('altivec')
+
+        # NVIDIA compiler does not support Neon intrinsics
+        if spec.satisfies('%nvhpc') and 'neon' in simd_features:
+            simd_features.remove('neon')
+
         simd_options = []
         for feature in simd_features:
             msg = '--enable-{0}' if feature in spec.target else '--disable-{0}'
@@ -128,10 +133,12 @@ class FftwBase(AutotoolsPackage):
         # If no features are found, enable the generic ones
         if not any(f in spec.target for f in
                    simd_features + float_simd_features):
-            simd_options += [
-                '--enable-generic-simd128',
-                '--enable-generic-simd256'
-            ]
+            # Workaround NVIDIA compiler bug
+            if not spec.satisfies('%nvhpc'):
+                simd_options += [
+                    '--enable-generic-simd128',
+                    '--enable-generic-simd256'
+                ]
 
         simd_options += [
             '--enable-fma' if 'fma' in spec.target else '--disable-fma'
@@ -182,6 +189,7 @@ class FftwBase(AutotoolsPackage):
     def install(self, spec, prefix):
         self.for_each_precision_make('install')
 
+
 class Fftw(FftwBase):
     """FFTW is a C subroutine library for computing the discrete Fourier
        transform (DFT) in one or more dimensions, of arbitrary input
@@ -201,8 +209,18 @@ class Fftw(FftwBase):
     version('3.3.4', sha256='8f0cde90929bc05587c3368d2f15cd0530a60b8a9912a8e2979a72dbe5af0982')
     version('2.1.5', sha256='f8057fae1c7df8b99116783ef3e94a6a44518d49c72e2e630c24b689c6022630')
 
+    variant(
+        'pfft_patches', default=False,
+        description='Add extra transpose functions for PFFT compatibility')
+
+    depends_on('automake', type='build', when='+pfft_patches')
+    depends_on('autoconf', type='build', when='+pfft_patches')
+    depends_on('libtool', type='build', when='+pfft_patches')
+
+    provides('fftw-api@2', when='@2.1.5')
+    provides('fftw-api@3', when='@3:')
+
     patch('pfft-3.3.5.patch', when="@3.3.5:+pfft_patches", level=0)
     patch('pfft-3.3.4.patch', when="@3.3.4+pfft_patches", level=0)
     patch('pgi-3.3.6-pl2.patch', when="@3.3.6-pl2%pgi", level=0)
     patch('intel-configure.patch', when="@3:3.3.8%intel", level=0)
-
