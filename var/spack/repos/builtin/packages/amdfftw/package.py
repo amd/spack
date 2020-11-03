@@ -3,6 +3,7 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
+import os
 from spack import *
 from spack.pkg.builtin.fftw import FftwBase
 
@@ -17,6 +18,9 @@ class Amdfftw(FftwBase):
     arrays of arbitrary size and dimension.
     AMD Optimized FFTW is the optimized FFTW implementation targeted
     for AMD CPUs.
+
+    For single precision build, please use precision value as float.
+    Example : spack install amdfftw precision=float
     """
 
     _name = 'amdfftw'
@@ -28,27 +32,17 @@ class Amdfftw(FftwBase):
 
     version('2.2', sha256='de9d777236fb290c335860b458131678f75aa0799c641490c644c843f0e246f8')
 
-    variant(
-        'precision', values=any_combination_of(
-            'float', 'single', 'double', 'long_double',
-            'quad').prohibit_empty_set().with_default('float,double'),
-        description='Build the selected floating-point precision libraries'
-    )
-
     variant('shared', default=True, description='Builds a shared version of the library')
-    variant('openmp', default=True, description="Enable OpenMP support.")
-    variant('mpi', default=True, description='Activate MPI support')
+    variant('openmp', default=True, description="Enable OpenMP support")
     variant('debug', default=False, description='Builds a debug version of the library')
 
-    depends_on('mpi', when='+mpi')
     depends_on('texinfo')
-    depends_on('llvm-openmp', when='%apple-clang +openmp')
 
     provides('fftw-api@3', when='@2:')
 
-    conflicts('precision=quad', when='%aocc', msg="AOCC clang doesn\'t support quad precision")
-    conflicts('+debug', when='%aocc', msg="AOCC clang doesn\'t support debug")
-    conflicts('%gcc@:7.2', when="@2.2:", msg="Recommended GCC version above 7.2 for AMDFFTW")
+    conflicts('precision=quad', when='%aocc', msg="AOCC clang doesn't support quad precision")
+    conflicts('+debug', when='%aocc', msg="AOCC clang doesn't support debug")
+    conflicts('%gcc@:7.2', when="@2.2:", msg="Required GCC version above 7.2 for AMDFFTW")
 
     def configure(self, spec, prefix):
         """Configure function"""
@@ -61,15 +55,19 @@ class Amdfftw(FftwBase):
 
         # Check if compiler is AOCC
         if spec.satisfies('%aocc'):
-            options.append('CC=clang')
-            options.append('CXX=clang++')
-            options.append('FC=flang')
+            options.append("CC={0}".format(os.path.basename(spack_cc)))
+            options.append("CXX={0}".format(os.path.basename(spack_cxx)))
+            options.append("FC={0}".format(os.path.basename(spack_fc)))
 
         if '+shared' in spec:
             options.append('--enable-shared')
+        else:
+            options.append('--disable-shared')
 
         if '+openmp' in spec:
             options.append('--enable-openmp')
+        else:
+            options.append('--disable-openmp')
 
         if '+mpi' in spec:
             options.append('--enable-mpi')
@@ -104,7 +102,6 @@ class Amdfftw(FftwBase):
         # to enable the corresponding option.
         enable_precision = {
             'float': ['--enable-float'],
-            'single': ['--enable-float'],
             'double': None,
             'long_double': ['--enable-long-double'],
             'quad': ['--enable-quad-precision']
@@ -117,11 +114,11 @@ class Amdfftw(FftwBase):
             opts = (enable_precision[precision] or []) + options[:]
 
             # SIMD optimizations are available only for float and double
-            if precision in ('float', 'single', 'double'):
+            if precision in ('float', 'double'):
                 opts += simd_options
 
             # float-only acceleration
-            if precision in ('float', 'single'):
+            if precision == 'float':
                 for feature in float_simd_features:
                     if feature in spec.target:
                         msg = '--enable-{0}'
