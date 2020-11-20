@@ -333,6 +333,12 @@ class Openmpi(AutotoolsPackage):
 
     filter_compiler_wrappers('openmpi/*-wrapper-data*', relative_root='share')
 
+    def flag_handler(self, name, flags):
+        if '%aocc' in self.spec:
+            if name in ['cflags', 'cxxflags', 'cppflags', 'fflags']:
+                flags.append('-O3 -ffp-contract=fast -ffast-math -fopenmp')
+        return None, None, flags
+
     def url_for_version(self, version):
         url = "http://www.open-mpi.org/software/ompi/v{0}/downloads/openmpi-{1}.tar.bz2"
         return url.format(version.up_to(2), version)

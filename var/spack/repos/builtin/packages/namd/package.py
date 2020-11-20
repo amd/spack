@@ -101,13 +101,13 @@ class Namd(MakefilePackage):
                                         -ffast-math -lpthread ' + archopt,
                         'intel': '-O2 -ip -qopenmp-simd' + archopt,
                         'aocc': '-O3 -ffp-contract=fast -ffast-math \
-                                        -fopenmp' + archopt}
+                                        -fopenmp ' + archopt}
                 else:
                     optims_opts = {
                         'gcc': m64 + '-O3 -fexpensive-optimizations \
                                         -ffast-math ' + archopt,
                         'intel': '-O2 -ip ' + archopt,
-                        'aocc': '-O3 -ffp-contract=fast -ffast-math' + archopt}
+                        'aocc': '-O3 -ffp-contract=fast -ffast-math ' + archopt}
 
                 optim_opts = optims_opts[self.compiler.name] \
                     if self.compiler.name in optims_opts else ''
