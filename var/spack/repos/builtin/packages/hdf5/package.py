@@ -313,6 +313,15 @@ class Hdf5(AutotoolsPackage):
         return extra_args
 
     @run_after('configure')
+    def patch_libtool(self):
+        """AOCC support for HDF5"""
+        if '%aocc' in self.spec:
+            filter_file(
+                r'\$wl-soname \$wl\$soname',
+                r'-fuse-ld=ld -Wl,-soname,\$soname',
+                'libtool', string=True)
+
+    @run_after('configure')
     def patch_postdeps(self):
         if '@:1.8.14' in self.spec:
             # On Ubuntu14, HDF5 1.8.12 (and maybe other versions)
