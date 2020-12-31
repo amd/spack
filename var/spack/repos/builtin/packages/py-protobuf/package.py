@@ -15,7 +15,7 @@ class PyProtobuf(PythonPackage):
     and using a variety of languages."""
 
     homepage = 'https://developers.google.com/protocol-buffers/'
-    url      = 'https://pypi.io/packages/source/p/protobuf/protobuf-3.11.0.tar.gz'
+    pypi = 'protobuf/protobuf-3.11.0.tar.gz'
 
     variant('cpp', default=False,
             description='Enable the cpp implementation')
@@ -56,6 +56,11 @@ class PyProtobuf(PythonPackage):
             return 'python'
         else:
             return '.'
+
+    @when('+cpp')
+    def setup_build_environment(self, env):
+        protobuf_dir = self.spec['protobuf'].libs.directories[0]
+        env.prepend_path('LIBRARY_PATH', protobuf_dir)
 
     @when('+cpp')
     def build_args(self, spec, prefix):
