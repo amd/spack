@@ -16,14 +16,14 @@
 +SCC             =       clang
 +CCOMP           =       clang
 +DM_FC           =       mpif90 -DMPI2_SUPPORT
-+DM_CC           =       mpicc  -DMPI2_SUPPORT
++DM_CC           =       mpicc -DMPI2_SUPPORT
 +FC              =       time $(DM_FC)
 +CC              =       $(DM_CC) -DFSEEKO64_OK
 +LD              =       $(FC)
 +RWORDSIZE       =       $(NATIVE_RWORDSIZE)
 +PROMOTION       =
 +ARCH_LOCAL      =       -DNONSTANDARD_SYSTEM_SUBR -DWRF_USE_CLM
-+LIBMVEC         =       -mllvm --vector-library=LIBMVEC
++LIBMVEC         =       -mllvm -vector-library=LIBMVEC
 +AMDARCHOPT      =       -march=native
 +AOCCOPT         =       -O3 -m64 -Ofast -ffast-math -g $(AMDARCHOPT)
 +CFLAGS_LOCAL    =       -w $(AOCCOPT)

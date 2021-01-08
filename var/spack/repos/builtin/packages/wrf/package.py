@@ -1,4 +1,4 @@
-# Copyright 2013-2018 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2021 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -248,6 +248,25 @@ class Wrf(Package):
             )
             with open("./arch/configure_new.defaults.bak", "rt") as ifh:
                 with open("./arch/configure_new.defaults", "wt") as ofh:
+                    for line in ifh:
+                        if line.startswith("DM_"):
+                            line = line.replace(
+                                "mpif90 -DMPI2_SUPPORT",
+                                self.spec['mpi'].mpifc + " -DMPI2_SUPPORT"
+                            )
+                            line = line.replace(
+                                "mpicc -DMPI2_SUPPORT",
+                                self.spec['mpi'].mpicc + " -DMPI2_SUPPORT"
+                            )
+                        ofh.write(line)
+
+        if self.spec.satisfies("@4.2 %aocc"):
+            rename(
+                "./arch/configure.defaults",
+                "./arch/configure.defaults.bak",
+            )
+            with open("./arch/configure.defaults.bak", "rt") as ifh:
+                with open("./arch/configure.defaults", "wt") as ofh:
                     for line in ifh:
                         if line.startswith("DM_"):
                             line = line.replace(
