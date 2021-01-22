@@ -204,6 +204,9 @@ class Cp2k(MakefilePackage, CudaPackage):
         if '^fftw' in spec:
             fftw = spec['fftw:openmp' if '+openmp' in spec else 'fftw']
             fftw_header_dir = fftw.headers.directories[0]
+        elif '^amdfftw' in spec:
+            fftw = spec['amdfftw:openmp' if '+openmp' in spec else 'amdfftw']
+            fftw_header_dir = fftw.headers.directories[0]
         elif '^intel-mkl' in spec:
             fftw = spec['intel-mkl']
             fftw_header_dir = fftw.headers.directories[0] + '/fftw'
@@ -227,6 +230,7 @@ class Cp2k(MakefilePackage, CudaPackage):
             'nvhpc': ['-fast'],
             'cray': ['-O2'],
             'xl': ['-O3'],
+            'aocc': ['-O3'],
         }
 
         dflags = ['-DNDEBUG']
@@ -263,6 +267,13 @@ class Cp2k(MakefilePackage, CudaPackage):
                 '-ffree-line-length-none',
                 '-ggdb',  # make sure we get proper Fortran backtraces
             ]
+        elif '%aocc' in spec:
+            fcflags += [
+                '-D__F2008',
+                '-ffree-form',
+                '-Hx,47,0x10000008',
+            ]
+            ldflags += ['-Wl,-z,muldefs']
         elif '%pgi' in spec or '%nvhpc' in spec:
             fcflags += ['-Mfreeform', '-Mextend']
         elif '%cray' in spec:
@@ -412,12 +423,13 @@ class Cp2k(MakefilePackage, CudaPackage):
             ])
 
         if '+elpa' in spec:
+            dso_suffix = 'a' if '%aocc' in spec else 'so'
             elpa = spec['elpa']
             elpa_suffix = '_openmp' if '+openmp' in elpa else ''
             elpa_incdir = elpa.headers.directories[0]
 
             fcflags += ['-I{0}'.format(os.path.join(elpa_incdir, 'modules'))]
-            libs.append(os.path.join(elpa.libs.directories[0],
+            libs.append(os.path.join(elpa.prefix.lib,
                                      ('libelpa{elpa_suffix}.{dso_suffix}'
                                       .format(elpa_suffix=elpa_suffix,
                                               dso_suffix=dso_suffix))))
