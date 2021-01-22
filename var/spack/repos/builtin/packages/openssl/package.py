@@ -1,4 +1,4 @@
-# Copyright 2013-2020 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2021 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -171,6 +171,14 @@ class Openssl(Package):   # Uses Fake Autotools, should subclass Package
             if os.path.isdir(sys_certs) and not os.path.islink(pkg_certs):
                 os.rmdir(pkg_certs)
                 os.symlink(sys_certs, pkg_certs)
+
+    def patch(self):
+        if self.spec.satisfies('%nvhpc'):
+            # Remove incompatible preprocessor flags
+            filter_file('-MF ', '',
+                        'Configurations/unix-Makefile.tmpl', string=True)
+            filter_file(r'-MT \$\@ ', '',
+                        'Configurations/unix-Makefile.tmpl', string=True)
 
     def setup_build_environment(self, env):
         env.set('PERL', self.spec['perl'].prefix.bin.perl)

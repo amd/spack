@@ -1,4 +1,4 @@
-# Copyright 2013-2020 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2021 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -67,6 +67,7 @@ class Hydrogen(CMakePackage, CudaPackage):
     depends_on('cmake@3.17.0:', type='build')
     depends_on('mpi')
     depends_on('hwloc@1.11:')
+    depends_on('hwloc +cuda +nvml', when='+cuda')
 
     # Note that #1712 forces us to enumerate the different blas variants
     depends_on('openblas', when='blas=openblas')

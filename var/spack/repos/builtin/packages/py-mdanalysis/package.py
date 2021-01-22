@@ -1,4 +1,4 @@
-# Copyright 2013-2020 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2021 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -41,7 +41,7 @@ class PyMdanalysis(PythonPackage):
     depends_on('py-six@1.4.0:',    type=('build', 'run'))
     depends_on('py-networkx@1.0:', type=('build', 'run'))
 
-    depends_on('py-gsd@1.4.0:',         when='@1.17.0:', type=('build', 'run'))
+    depends_on('py-gsd@1.4.0:',         when='@0.17.0:', type=('build', 'run'))
     depends_on('py-mmtf-python@1.0.0:', when='@0.16.0:', type=('build', 'run'))
     depends_on('py-mock',               when='@0.18.0:', type=('build', 'run'))
     depends_on('py-tqdm@4.43.0:',       when='@1.0.0:',  type=('build', 'run'))

@@ -1,4 +1,4 @@
-# Copyright 2013-2020 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2021 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -62,6 +62,9 @@ class PyScikitLearn(PythonPackage):
     conflicts('~openmp', when='@:999', msg='Only master supports ~openmp')
 
     def setup_build_environment(self, env):
+        # enable parallel builds of the sklearn backend
+        env.append_flags("SKLEARN_BUILD_PARALLEL", str(make_jobs))
+
         # https://scikit-learn.org/stable/developers/advanced_installation.html#building-from-source
         if self.spec.satisfies('~openmp'):
             env.set('SKLEARN_NO_OPENMP', 'True')

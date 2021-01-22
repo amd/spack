@@ -1,4 +1,4 @@
-# Copyright 2013-2020 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2021 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -417,8 +417,8 @@ class Python(AutotoolsPackage):
             config_args.append('--disable-toolbox-glue')
 
         if spec.satisfies('%intel', strict=True) and \
-                spec.satisfies('@2.7.12:2.8,3.5.2:', strict=True):
-            config_args.append('--with-icc')
+                spec.satisfies('@2.7.12:2.8,3.5.2:3.7', strict=True):
+            config_args.append('--with-icc={0}'.format(spack_cc))
 
         if '+debug' in spec:
             config_args.append('--with-pydebug')

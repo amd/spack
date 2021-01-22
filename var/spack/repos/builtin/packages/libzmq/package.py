@@ -1,4 +1,4 @@
-# Copyright 2013-2020 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2021 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -37,6 +37,9 @@ class Libzmq(AutotoolsPackage):
     depends_on('automake', type='build', when='@develop')
     depends_on('libtool', type='build', when='@develop')
     depends_on('pkgconfig', type='build')
+
+    depends_on('libbsd', type='link', when='@4.3.3: platform=linux')
+    depends_on('libbsd', type='link', when='@4.3.3: platform=cray')
 
     conflicts('%gcc@8:', when='@:4.2.2')
 

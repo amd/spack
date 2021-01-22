@@ -1,4 +1,4 @@
-# Copyright 2013-2019 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2021 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -93,7 +93,7 @@ class PyHorovod(PythonPackage, CudaPackage):
               msg='Must specify CUDA compute capabilities of your GPU, see '
               'https://developer.nvidia.com/cuda-gpus')
     conflicts('tensor_ops=nccl', when='~cuda~rocm', msg='NCCL requires either CUDA or ROCm support')
-    conflicts('framework=ray', when='@:0.19', msg='Ray integration was added in 0.20.X')
+    conflicts('frameworks=ray', when='@:0.19', msg='Ray integration was added in 0.20.X')
     conflicts('controllers=gloo', when='@:0.20.0 platform=darwin', msg='Gloo cannot be compiled on MacOS')
 
     # https://github.com/horovod/horovod/pull/1835

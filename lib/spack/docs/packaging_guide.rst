@@ -1,4 +1,4 @@
-.. Copyright 2013-2020 Lawrence Livermore National Security, LLC and other
+.. Copyright 2013-2021 Lawrence Livermore National Security, LLC and other
    Spack Project Developers. See the top-level COPYRIGHT file for details.
 
    SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -2744,11 +2744,13 @@ The classes that are currently provided by Spack are:
     |                               | built using CMake                |
     +-------------------------------+----------------------------------+
     | :py:class:`.CudaPackage`      | A helper class for packages that |
-    |                               | use CUDA. It is intended to be   |
-    |                               | used in combination with others  |
+    |                               | use CUDA                         |
     +-------------------------------+----------------------------------+
     | :py:class:`.QMakePackage`     | Specialized class for packages   |
     |                               | build using QMake                |
+    +-------------------------------+----------------------------------+
+    | :py:class:`.ROCmPackage`      | A helper class for packages that |
+    |                               | use ROCm                         |
     +-------------------------------+----------------------------------+
     | :py:class:`.SConsPackage`     | Specialized class for packages   |
     |                               | built using SCons                |
