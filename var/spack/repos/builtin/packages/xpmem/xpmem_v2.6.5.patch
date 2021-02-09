@@ -1,23 +1,15 @@
---- xpmem/kernel/xpmem_pfn.c    2021-02-08 02:15:49.745890568 -0800
-+++ xpmem/kernel/xpmem_pfn.c    2021-02-08 21:11:42.286679927 -0800
-@@ -249,10 +249,18 @@
-         */
-        if (xpmem_vaddr_to_pte_offset(src_mm, vaddr, NULL) == NULL &&
-            cpu_to_node(task_cpu(current)) != cpu_to_node(task_cpu(src_task))) {
-+
+--- kernel/xpmem_pfn.c	2021-02-08 22:49:05.321501753 -0800
++++ kernel/xpmem_pfn.c	2021-02-08 22:50:47.902900088 -0800
+@@ -251,6 +251,12 @@
+ 	    cpu_to_node(task_cpu(current)) != cpu_to_node(task_cpu(src_task))) {
  #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0)
--               saved_mask = current->cpus_mask;
-+                saved_mask = current->cpus_mask;
+ 		saved_mask = current->cpus_mask;
 +#elif LINUX_VERSION_CODE == KERNEL_VERSION(4,18, 0)
-+//If RHEL Release version is 8.3
-+        #ifdef RHEL_RELEASE_CODE
-+                #if  RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8,3)
-+                        saved_mask = current->cpus_mask;
-+                #endif
-+        #endif
++	#ifdef RHEL_RELEASE_CODE
++		#if  RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8,3)
++			saved_mask = current->cpus_mask;
++		#endif
++	#endif
  #else
--               saved_mask = current->cpus_allowed;
-+                saved_mask = current->cpus_allowed;
+ 		saved_mask = current->cpus_allowed;
  #endif
-                set_cpus_allowed_ptr(current, cpumask_of(task_cpu(src_task)));
-        }
