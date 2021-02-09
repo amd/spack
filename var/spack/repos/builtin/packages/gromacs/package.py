@@ -73,8 +73,8 @@ class Gromacs(CMakePackage):
             ' of libgromacs and/or the mdrun program')
     variant('openmp', default=True,
             description='Enables OpenMP at configure time')
-    variant('double_precision', default=False,
-            description='GMX_RELAXED_DOUBLE_PRECISION for Fujitsu PRIMEHPC')
+    variant('relaxed_double_precision', default=False,
+            description='GMX_RELAXED_DOUBLE_PRECISION, use only for Fujitsu PRIMEHPC')
     variant('hwloc', default=True,
             description='Use the hwloc portable hardware locality library')
     variant('lapack', default=False,
@@ -211,8 +211,8 @@ class Gromacs(CMakePackage):
         elif target == 'mic_knl':
             # Intel KNL
             options.append('-DGMX_SIMD=AVX_512_KNL')
-        elif target.vendor == 'GenuineIntel':
-            # Other Intel architectures
+        else:
+            # Other architectures
             simd_features = [
                 ('sse2', 'SSE2'),
                 ('sse4_1', 'SSE4.1'),
@@ -231,8 +231,8 @@ class Gromacs(CMakePackage):
                 if feature in target:
                     options.append('-DGMX_SIMD:STRING={0}'.format(flag))
                     break
-        else:
-            # Fall back to this for unknown microarchitectures
+
+            # Fall back
             options.append('-DGMX_SIMD:STRING=None')
 
         # Use the 'rtdscp' assembly instruction only on
@@ -251,7 +251,7 @@ class Gromacs(CMakePackage):
         else:
             options.append('-DGMX_OPENMP:BOOL=ON')
 
-        if '+double_precision' in self.spec:
+        if '+relaxed_double_precision' in self.spec:
             options.append('-DGMX_RELAXED_DOUBLE_PRECISION:BOOL=ON')
         else:
             options.append('-DGMX_RELAXED_DOUBLE_PRECISION:BOOL=OFF')
