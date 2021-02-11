@@ -272,6 +272,7 @@ class QuantumEspresso(Package):
     # Configure updated to work with Fujitsu compilers
     patch('fj.6.5.patch', when='@6.5+patch %fj')
     patch('fj.6.6.patch', when='@6.6:6.7+patch %fj')
+    patch('aocc_6.7.patch', when='@6.7+patch %aocc')
 
     # extlibs_makefile updated to work with fujitsu compilers
     patch('fj-fox.patch', when='+patch %fj')
@@ -346,6 +347,15 @@ class QuantumEspresso(Package):
             fftw_ld_flags = spec['fftw'].libs.ld_flags
             options.append('FFT_LIBS={0}'.format(fftw_ld_flags))
 
+        if '^amdfftw' in spec:
+            fftw_prefix = spec['amdfftw'].prefix
+            options.append('FFTW_INCLUDE={0}'.format(fftw_prefix.include))
+            if '+openmp' in spec:
+                fftw_ld_flags = spec['amdfftw:openmp'].libs.ld_flags
+            else:
+                fftw_ld_flags = spec['amdfftw'].libs.ld_flags
+            options.append('FFT_LIBS={0}'.format(fftw_ld_flags))
+
         # External BLAS and LAPACK requires the correct link line into
         # BLAS_LIBS, do no use LAPACK_LIBS as the autoconf scripts indicate
         # that this variable is largely ignored/obsolete.
@@ -393,9 +403,22 @@ class QuantumEspresso(Package):
             )
 
             options.extend([
-                '--with-elpa-include={0}'.format(elpa_include),
-                '--with-elpa-lib={0}'.format(elpa.libs[0])
+                '--with-elpa-include={0}'.format(elpa_include)
             ])
+            elpa_suffix = '_openmp' if '+openmp' in elpa else ''
+
+            # Currently AOCC support only static libraries of ELPA
+            if '%aocc' in spec:
+                options.extend([
+                    '--with-elpa-lib={0}'.format(
+                        join_path(elpa.prefix.lib,
+                                  'libelpa{elpa_suffix}.a'
+                                  .format(elpa_suffix=elpa_suffix)))
+                ])
+            else:
+                options.extend([
+                    '--with-elpa-lib={0}'.format(elpa.libs[0])
+                ])
 
         if spec.variants['hdf5'].value != 'none':
             options.append('--with-hdf5={0}'.format(spec['hdf5'].prefix))
