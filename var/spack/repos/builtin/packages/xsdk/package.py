@@ -81,7 +81,7 @@ class Xsdk(BundlePackage):
     depends_on('petsc +trilinos', when='+trilinos')
     depends_on('petsc +cuda', when='+cuda @0.6.0:')
     depends_on('petsc +batch', when='platform=cray @0.5.0:')
-    depends_on('petsc@develop+mpi+hypre+superlu-dist+metis+hdf5~mumps+double~int64',
+    depends_on('petsc@main+mpi+hypre+superlu-dist+metis+hdf5~mumps+double~int64',
                when='@develop')
     depends_on('petsc@3.14.1+mpi+hypre+superlu-dist+metis+hdf5~mumps+double~int64',
                when='@0.6.0')
@@ -143,7 +143,7 @@ class Xsdk(BundlePackage):
     depends_on('amrex@18.10.1', when='@0.4.0 %intel')
     depends_on('amrex@18.10.1', when='@0.4.0 %gcc')
 
-    depends_on('slepc@master', when='@develop')
+    depends_on('slepc@main', when='@develop')
     depends_on('slepc@3.14.0', when='@0.6.0')
     depends_on('slepc@3.12.0', when='@0.5.0')
     depends_on('slepc@3.10.1', when='@0.4.0')
@@ -156,10 +156,10 @@ class Xsdk(BundlePackage):
     depends_on('omega-h@9.19.1', when='@0.4.0 +omega-h')
 
     depends_on('strumpack ~cuda', when='~cuda @0.6.0: +strumpack')
-    depends_on('strumpack@master~slate', when='@develop +strumpack')
-    depends_on('strumpack@5.0.0~slate', when='@0.6.0 +strumpack')
-    depends_on('strumpack@3.3.0~slate', when='@0.5.0 +strumpack')
-    depends_on('strumpack@3.1.1~slate', when='@0.4.0 +strumpack')
+    depends_on('strumpack@master~slate~openmp', when='@develop +strumpack')
+    depends_on('strumpack@5.0.0~slate~openmp', when='@0.6.0 +strumpack')
+    depends_on('strumpack@3.3.0~slate~openmp', when='@0.5.0 +strumpack')
+    depends_on('strumpack@3.1.1~slate~openmp', when='@0.4.0 +strumpack')
 
     depends_on('pumi@master', when='@develop')
     depends_on('pumi@2.2.5', when='@0.6.0')
@@ -177,7 +177,7 @@ class Xsdk(BundlePackage):
     depends_on('tasmanian@6.0+xsdkflags+blas+cuda+magma~openmp', when='@0.4.0 +cuda')
 
     # the Fortran 2003 bindings of phist require python@3:, but this
-    # creates a conflict with other packages like petsc@develop. Actually
+    # creates a conflict with other packages like petsc@main. Actually
     # these are type='build' dependencies, but spack reports a conflict anyway.
     # This will be fixed once the new concretizer becomes available
     # (says @adamjstewart)
@@ -197,7 +197,7 @@ class Xsdk(BundlePackage):
     depends_on('ginkgo@1.1.0 ~openmp+cuda', when='@0.5.0 +cuda +ginkgo')
 
     depends_on('py-libensemble@develop+petsc4py', type='run', when='@develop +libensemble')
-    depends_on('py-petsc4py@develop', type='run', when='@develop +libensemble')
+    depends_on('py-petsc4py@main', type='run', when='@develop +libensemble')
     depends_on('py-libensemble@0.7.1+petsc4py', type='run', when='@0.6.0 +libensemble')
     depends_on('py-petsc4py@3.14.0', type='run', when='@0.6.0 +libensemble')
     depends_on('py-libensemble@0.5.2+petsc4py', type='run', when='@0.5.0 +libensemble')
