@@ -1,4 +1,4 @@
-# Copyright 2013-2020 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2021 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -12,6 +12,7 @@ import shutil
 import tempfile
 import hashlib
 import glob
+from ordereddict_backport import OrderedDict
 
 from contextlib import closing
 import ruamel.yaml as yaml
@@ -300,14 +301,11 @@ class BinaryCacheIndex(object):
             cached_index_path = cache_entry['index_path']
             if cached_mirror_url in configured_mirror_urls:
                 # May need to fetch the index and update the local caches
-                needs_regen = self.fetch_and_cache_index(
+                needs_regen = self._fetch_and_cache_index(
                     cached_mirror_url, expect_hash=cached_index_hash)
-                # In this block, the need to regenerate implies a need to
-                # clear as well.  This is the first place we set these to
-                # non-default values, so setting them False is fine.  After
-                # this, we should never set False again, only True.
-                spec_cache_clear_needed = needs_regen
-                spec_cache_regenerate_needed = needs_regen
+                # The need to regenerate implies a need to clear as well.
+                spec_cache_clear_needed |= needs_regen
+                spec_cache_regenerate_needed |= needs_regen
             else:
                 # No longer have this mirror, cached index should be removed
                 items_to_remove.append({
@@ -331,11 +329,9 @@ class BinaryCacheIndex(object):
         for mirror_url in configured_mirror_urls:
             if mirror_url not in self._local_index_cache:
                 # Need to fetch the index and update the local caches
-                needs_regen = self.fetch_and_cache_index(mirror_url)
+                needs_regen = self._fetch_and_cache_index(mirror_url)
                 # Generally speaking, a new mirror wouldn't imply the need to
-                # clear the spec cache, but don't touch it, which lets the
-                # previous decisions stand.  Also, only change the need to
-                # regenerate possibly from False to True.
+                # clear the spec cache, so leave it as is.
                 if needs_regen:
                     spec_cache_regenerate_needed = True
 
@@ -344,7 +340,7 @@ class BinaryCacheIndex(object):
         if spec_cache_regenerate_needed:
             self.regenerate_spec_cache(clear_existing=spec_cache_clear_needed)
 
-    def fetch_and_cache_index(self, mirror_url, expect_hash=None):
+    def _fetch_and_cache_index(self, mirror_url, expect_hash=None):
         """ Fetch a buildcache index file from a remote mirror and cache it.
 
         If we already have a cached index from this mirror, then we first
@@ -603,7 +599,9 @@ def write_buildinfo_file(spec, workdir, rel=False):
                 text_to_relocate.append(rel_path_name)
 
     # Create buildinfo data and write it to disk
+    import spack.hooks.sbang as sbang
     buildinfo = {}
+    buildinfo['sbang_install_path'] = sbang.sbang_install_path()
     buildinfo['relative_rpaths'] = rel
     buildinfo['buildpath'] = spack.store.layout.root
     buildinfo['spackprefix'] = spack.paths.prefix
@@ -703,10 +701,23 @@ def generate_package_index(cache_prefix):
                            enable_transaction_locking=False,
                            record_fields=['spec', 'ref_count'])
 
-    file_list = (
-        entry
-        for entry in web_util.list_url(cache_prefix)
-        if entry.endswith('.yaml'))
+    try:
+        file_list = (
+            entry
+            for entry in web_util.list_url(cache_prefix)
+            if entry.endswith('.yaml'))
+    except KeyError as inst:
+        msg = 'No packages at {0}: {1}'.format(cache_prefix, inst)
+        tty.warn(msg)
+        return
+    except Exception as err:
+        # If we got some kind of S3 (access denied or other connection
+        # error), the first non boto-specific class in the exception
+        # hierarchy is Exception.  Just print a warning and return
+        msg = 'Encountered problem listing packages at {0}: {1}'.format(
+            cache_prefix, err)
+        tty.warn(msg)
+        return
 
     tty.debug('Retrieving spec.yaml files from {0} to build index'.format(
         cache_prefix))
@@ -752,6 +763,10 @@ def generate_package_index(cache_prefix):
             url_util.join(cache_prefix, 'index.json.hash'),
             keep_original=False,
             extra_args={'ContentType': 'text/plain'})
+    except Exception as err:
+        msg = 'Encountered problem pushing package index to {0}: {1}'.format(
+            cache_prefix, err)
+        tty.warn(msg)
     finally:
         shutil.rmtree(tmpdir)
 
@@ -768,10 +783,23 @@ def generate_key_index(key_prefix, tmpdir=None):
                         url_util.format(key_prefix),
                         'to build key index')))
 
-    fingerprints = (
-        entry[:-4]
-        for entry in web_util.list_url(key_prefix, recursive=False)
-        if entry.endswith('.pub'))
+    try:
+        fingerprints = (
+            entry[:-4]
+            for entry in web_util.list_url(key_prefix, recursive=False)
+            if entry.endswith('.pub'))
+    except KeyError as inst:
+        msg = 'No keys at {0}: {1}'.format(key_prefix, inst)
+        tty.warn(msg)
+        return
+    except Exception as err:
+        # If we got some kind of S3 (access denied or other connection
+        # error), the first non boto-specific class in the exception
+        # hierarchy is Exception.  Just print a warning and return
+        msg = 'Encountered problem listing keys at {0}: {1}'.format(
+            key_prefix, err)
+        tty.warn(msg)
+        return
 
     remove_tmpdir = False
 
@@ -799,6 +827,10 @@ def generate_key_index(key_prefix, tmpdir=None):
                 url_util.join(key_prefix, 'index.json'),
                 keep_original=False,
                 extra_args={'ContentType': 'application/json'})
+        except Exception as err:
+            msg = 'Encountered problem pushing key index to {0}: {1}'.format(
+                key_prefix, err)
+            tty.warn(msg)
         finally:
             if remove_tmpdir:
                 shutil.rmtree(tmpdir)
@@ -1057,12 +1089,18 @@ def relocate_package(spec, allow_root):
     """
     Relocate the given package
     """
+    import spack.hooks.sbang as sbang
+
     workdir = str(spec.prefix)
     buildinfo = read_buildinfo_file(workdir)
     new_layout_root = str(spack.store.layout.root)
     new_prefix = str(spec.prefix)
     new_rel_prefix = str(os.path.relpath(new_prefix, new_layout_root))
     new_spack_prefix = str(spack.paths.prefix)
+
+    old_sbang_install_path = None
+    if 'sbang_install_path' in buildinfo:
+        old_sbang_install_path = str(buildinfo['sbang_install_path'])
     old_layout_root = str(buildinfo['buildpath'])
     old_spack_prefix = str(buildinfo.get('spackprefix'))
     old_rel_prefix = buildinfo.get('relative_prefix')
@@ -1084,11 +1122,29 @@ def relocate_package(spec, allow_root):
     new_deps = spack.build_environment.get_rpath_deps(spec.package)
     for d in new_deps:
         hash_to_prefix[d.format('{hash}')] = str(d.prefix)
-    prefix_to_prefix = dict()
+    # Spurious replacements (e.g. sbang) will cause issues with binaries
+    # For example, the new sbang can be longer than the old one.
+    # Hence 2 dictionaries are maintained here.
+    prefix_to_prefix_text = OrderedDict({})
+    prefix_to_prefix_bin = OrderedDict({})
+
+    if old_sbang_install_path:
+        prefix_to_prefix_text[old_sbang_install_path] = sbang.sbang_install_path()
+
+    prefix_to_prefix_text[old_prefix] = new_prefix
+    prefix_to_prefix_bin[old_prefix] = new_prefix
+    prefix_to_prefix_text[old_layout_root] = new_layout_root
+    prefix_to_prefix_bin[old_layout_root] = new_layout_root
     for orig_prefix, hash in prefix_to_hash.items():
-        prefix_to_prefix[orig_prefix] = hash_to_prefix.get(hash, None)
-    prefix_to_prefix[old_prefix] = new_prefix
-    prefix_to_prefix[old_layout_root] = new_layout_root
+        prefix_to_prefix_text[orig_prefix] = hash_to_prefix.get(hash, None)
+        prefix_to_prefix_bin[orig_prefix] = hash_to_prefix.get(hash, None)
+    # This is vestigial code for the *old* location of sbang. Previously,
+    # sbang was a bash script, and it lived in the spack prefix. It is
+    # now a POSIX script that lives in the install prefix. Old packages
+    # will have the old sbang location in their shebangs.
+    orig_sbang = '#!/bin/bash {0}/bin/sbang'.format(old_spack_prefix)
+    new_sbang = sbang.sbang_shebang_line()
+    prefix_to_prefix_text[orig_sbang] = new_sbang
 
     tty.debug("Relocating package from",
               "%s to %s." % (old_layout_root, new_layout_root))
@@ -1104,7 +1160,7 @@ def relocate_package(spec, allow_root):
         if not is_backup_file(text_name):
             text_names.append(text_name)
 
-# If we are not installing back to the same install tree do the relocation
+    # If we are not installing back to the same install tree do the relocation
     if old_layout_root != new_layout_root:
         files_to_relocate = [os.path.join(workdir, filename)
                              for filename in buildinfo.get('relocate_binaries')
@@ -1116,15 +1172,14 @@ def relocate_package(spec, allow_root):
             relocate.relocate_macho_binaries(files_to_relocate,
                                              old_layout_root,
                                              new_layout_root,
-                                             prefix_to_prefix, rel,
+                                             prefix_to_prefix_bin, rel,
                                              old_prefix,
                                              new_prefix)
-
         if 'elf' in platform.binary_formats:
             relocate.relocate_elf_binaries(files_to_relocate,
                                            old_layout_root,
                                            new_layout_root,
-                                           prefix_to_prefix, rel,
+                                           prefix_to_prefix_bin, rel,
                                            old_prefix,
                                            new_prefix)
             # Relocate links to the new install prefix
@@ -1135,12 +1190,7 @@ def relocate_package(spec, allow_root):
 
         # For all buildcaches
         # relocate the install prefixes in text files including dependencies
-        relocate.relocate_text(text_names,
-                               old_layout_root, new_layout_root,
-                               old_prefix, new_prefix,
-                               old_spack_prefix,
-                               new_spack_prefix,
-                               prefix_to_prefix)
+        relocate.relocate_text(text_names, prefix_to_prefix_text)
 
         paths_to_relocate = [old_prefix, old_layout_root]
         paths_to_relocate.extend(prefix_to_hash.keys())
@@ -1150,22 +1200,13 @@ def relocate_package(spec, allow_root):
             map(lambda filename: os.path.join(workdir, filename),
                 buildinfo['relocate_binaries'])))
         # relocate the install prefixes in binary files including dependencies
-        relocate.relocate_text_bin(files_to_relocate,
-                                   old_prefix, new_prefix,
-                                   old_spack_prefix,
-                                   new_spack_prefix,
-                                   prefix_to_prefix)
+        relocate.relocate_text_bin(files_to_relocate, prefix_to_prefix_bin)
 
-# If we are installing back to the same location
-# relocate the sbang location if the spack directory changed
+    # If we are installing back to the same location
+    # relocate the sbang location if the spack directory changed
     else:
         if old_spack_prefix != new_spack_prefix:
-            relocate.relocate_text(text_names,
-                                   old_layout_root, new_layout_root,
-                                   old_prefix, new_prefix,
-                                   old_spack_prefix,
-                                   new_spack_prefix,
-                                   prefix_to_prefix)
+            relocate.relocate_text(text_names, prefix_to_prefix_text)
 
 
 def extract_tarball(spec, filename, allow_root=False, unsigned=False,
@@ -1289,15 +1330,16 @@ def extract_tarball(spec, filename, allow_root=False, unsigned=False,
             os.remove(filename)
 
 
-def try_direct_fetch(spec, force=False, full_hash_match=False):
+def try_direct_fetch(spec, full_hash_match=False, mirrors=None):
     """
     Try to find the spec directly on the configured mirrors
     """
     specfile_name = tarball_name(spec, '.spec.yaml')
     lenient = not full_hash_match
     found_specs = []
+    spec_full_hash = spec.full_hash()
 
-    for mirror in spack.mirror.MirrorCollection().values():
+    for mirror in spack.mirror.MirrorCollection(mirrors=mirrors).values():
         buildcache_fetch_url = url_util.join(
             mirror.fetch_url, _build_cache_relative_path, specfile_name)
 
@@ -1317,7 +1359,7 @@ def try_direct_fetch(spec, force=False, full_hash_match=False):
 
         # Do not recompute the full hash for the fetched spec, instead just
         # read the property.
-        if lenient or fetched_spec._full_hash == spec.full_hash():
+        if lenient or fetched_spec._full_hash == spec_full_hash:
             found_specs.append({
                 'mirror_url': mirror.fetch_url,
                 'spec': fetched_spec,
@@ -1326,15 +1368,31 @@ def try_direct_fetch(spec, force=False, full_hash_match=False):
     return found_specs
 
 
-def get_mirrors_for_spec(spec=None, force=False, full_hash_match=False):
+def get_mirrors_for_spec(spec=None, full_hash_match=False,
+                         mirrors_to_check=None, index_only=False):
     """
     Check if concrete spec exists on mirrors and return a list
     indicating the mirrors on which it can be found
+
+    Args:
+        spec (Spec): The spec to look for in binary mirrors
+        full_hash_match (bool): If True, only includes mirrors where the spec
+            full hash matches the locally computed full hash of the ``spec``
+            argument.  If False, any mirror which has a matching DAG hash
+            is included in the results.
+        mirrors_to_check (dict): Optionally override the configured mirrors
+            with the mirrors in this dictionary.
+        index_only (bool): Do not attempt direct fetching of ``spec.yaml``
+            files from remote mirrors, only consider the indices.
+
+    Return:
+        A list of objects, each containing a ``mirror_url`` and ``spec`` key
+            indicating all mirrors where the spec can be found.
     """
     if spec is None:
         return []
 
-    if not spack.mirror.MirrorCollection():
+    if not spack.mirror.MirrorCollection(mirrors=mirrors_to_check):
         tty.debug("No Spack mirrors are currently configured")
         return {}
 
@@ -1355,11 +1413,12 @@ def get_mirrors_for_spec(spec=None, force=False, full_hash_match=False):
         results = filter_candidates(candidates)
 
     # Maybe we just didn't have the latest information from the mirror, so
-    # try to fetch directly.
-    if not results:
+    # try to fetch directly, unless we are only considering the indices.
+    if not results and not index_only:
         results = try_direct_fetch(spec,
-                                   force=force,
-                                   full_hash_match=full_hash_match)
+                                   full_hash_match=full_hash_match,
+                                   mirrors=mirrors_to_check)
+
         if results:
             binary_index.update_spec(spec, results)
 

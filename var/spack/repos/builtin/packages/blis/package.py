@@ -1,4 +1,4 @@
-# Copyright 2013-2020 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2021 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -53,7 +53,8 @@ class BlisBase(Package):
 
     phases = ['configure', 'build', 'install']
 
-    def configure(self, spec, prefix):
+    def configure_args(self):
+        spec = self.spec
         config_args = []
 
         config_args.append("--enable-threading=" +
@@ -82,8 +83,11 @@ class BlisBase(Package):
         # FIXME: add cpu isa variants.
         config_args.append("auto")
 
+        return config_args
+
+    def configure(self, spec, prefix):
         configure("--prefix=" + prefix,
-                  *config_args)
+                  *self.configure_args())
 
     def build(self, spec, prefix):
         make()

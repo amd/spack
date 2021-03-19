@@ -1,4 +1,4 @@
-# Copyright 2013-2020 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2021 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -23,7 +23,7 @@ class GobjectIntrospection(Package):
     # version 1.48.0 build fails with glib 2.49.4
     depends_on("glib@2.48.1", when="@1.48.0")
     depends_on("python")
-    depends_on("cairo")
+    depends_on("cairo+gobject")
     depends_on("bison", type="build")
     depends_on("flex", type="build")
     depends_on("pkgconfig", type="build")
@@ -57,11 +57,19 @@ class GobjectIntrospection(Package):
         url = 'http://ftp.gnome.org/pub/gnome/sources/gobject-introspection/{0}/gobject-introspection-{1}.tar.xz'
         return url.format(version.up_to(2), version)
 
+    def setup_run_environment(self, env):
+        env.prepend_path("GI_TYPELIB_PATH",
+                         join_path(self.prefix.lib, 'girepository-1.0'))
+
     def setup_dependent_build_environment(self, env, dependent_spec):
         env.prepend_path("XDG_DATA_DIRS", self.prefix.share)
+        env.prepend_path("GI_TYPELIB_PATH",
+                         join_path(self.prefix.lib, 'girepository-1.0'))
 
     def setup_dependent_run_environment(self, env, dependent_spec):
         env.prepend_path("XDG_DATA_DIRS", self.prefix.share)
+        env.prepend_path("GI_TYPELIB_PATH",
+                         join_path(self.prefix.lib, 'girepository-1.0'))
 
     def install(self, spec, prefix):
         configure("--prefix=%s" % prefix)
