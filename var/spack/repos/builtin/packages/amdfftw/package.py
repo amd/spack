@@ -102,7 +102,6 @@ class Amdfftw(FftwBase):
             msg = '--enable-{0}' if feature in spec.target else '--disable-{0}'
             simd_options.append(msg.format(feature))
 
-        float_simd_features = ['altivec']
 
         # When enabling configure option "--enable-amd-opt", do not use the
         # configure option "--enable-generic-simd128" or
@@ -126,15 +125,6 @@ class Amdfftw(FftwBase):
             # SIMD optimizations are available only for float and double
             if precision in ('float', 'double'):
                 opts += simd_options
-
-            # float-only acceleration
-            if precision == 'float':
-                for feature in float_simd_features:
-                    if feature in spec.target:
-                        msg = '--enable-{0}'
-                    else:
-                        msg = '--disable-{0}'
-                    opts.append(msg.format(feature))
 
             with working_dir(precision, create=True):
                 configure(*opts)
