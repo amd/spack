@@ -35,26 +35,30 @@ class Amdfftw(FftwBase):
 
     variant('shared', default=True, description="Builds a shared version of the library")
     variant('openmp', default=True, description="Enable OpenMP support")
+    variant('threads', default=False, description="Enable SMP threads support")
     variant('debug', default=False, description="Builds a debug version of the library")
-    variant('amd-fast-planner',
-            default=False,
-            description="Option to reduce the planning time without much"
-                        "tradeoff in the performance. It is supported for"
-                        "Float and double precisions only.")
+    variant(
+        'amd-fast-planner',
+        default=False,
+        description="Option to reduce the planning time without much"
+                    "tradeoff in the performance. It is supported for"
+                    "Float and double precisions only.")
 
     depends_on('texinfo')
 
     provides('fftw-api@3', when='@2:')
 
-    conflicts('precision=quad', when='%aocc', msg="AOCC clang doesn't support quad precision")
-    conflicts('+debug', when='%aocc', msg="AOCC clang doesn't support debug")
+    conflicts('precision=quad', when='@2.2 %aocc', msg="AOCC clang doesn't support quad precision")
+    conflicts('+debug', when='@2.2 %aocc', msg="AOCC clang doesn't support debug")
     conflicts('%gcc@:7.2', when="@2.2:", msg="Required GCC version above 7.2 for AMDFFTW")
-    conflicts('+amd-fast-planner',
-              when='precision=quad',
-              msg="amd-fast-planner doesn't support quad precision")
-    conflicts('+amd-fast-planner',
-              when='precision=long_double',
-              msg="amd-fast-planner doesn't support long_double precision")
+    conflicts(
+        '+amd-fast-planner',
+        when='precision=quad',
+        msg="amd-fast-planner doesn't support quad precision")
+    conflicts(
+        '+amd-fast-planner',
+        when='precision=long_double',
+        msg="amd-fast-planner doesn't support long_double precision")
 
     def configure(self, spec, prefix):
         """Configure function"""
@@ -65,7 +69,7 @@ class Amdfftw(FftwBase):
         ]
 
         # Check if compiler is AOCC
-        if spec.satisfies('%aocc'):
+        if spec.satisfies('@2.2 %aocc'):
             options.append("CC={0}".format(os.path.basename(spack_cc)))
             options.append("FC={0}".format(os.path.basename(spack_fc)))
             options.append("F77={0}".format(os.path.basename(spack_fc)))
@@ -80,6 +84,11 @@ class Amdfftw(FftwBase):
         else:
             options.append('--disable-openmp')
 
+        if '+threads' in spec:
+            options.append('--enable-threads')
+        else:
+            options.append('--disable-threads')
+
         if '+mpi' in spec:
             options.append('--enable-mpi')
             options.append('--enable-amd-mpifft')
@@ -89,19 +98,20 @@ class Amdfftw(FftwBase):
 
         if spec.satisfies('+amd-fast-planner'):
             options.append('--enable-amd-fast-planner')
+        else:
+            options.append('--disable-amd-fast-planner')
 
         if not self.compiler.f77 or not self.compiler.fc:
             options.append("--disable-fortran")
 
         # Specific SIMD support.
         # float and double precisions are supported
-        simd_features = ['sse2', 'avx', 'avx2', 'avx512', 'avx-128-fma',
-                         'kcvi', 'vsx', 'neon']
+        simd_features = ['sse2', 'avx', 'avx2']
+
         simd_options = []
         for feature in simd_features:
             msg = '--enable-{0}' if feature in spec.target else '--disable-{0}'
             simd_options.append(msg.format(feature))
-
 
         # When enabling configure option "--enable-amd-opt", do not use the
         # configure option "--enable-generic-simd128" or
