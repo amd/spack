@@ -266,13 +266,15 @@ class QuantumEspresso(Package):
           sha256='bbceba1fb08d01d548d4393bbcaeae966def13f75884268a0f84448457b8eaa3',
           when='+patch@6.4.1:6.5.0')
 
+    # Configure updated to work with AOCC compilers
+    patch('configure_aocc.patch', when='@6.7 %aocc')
+
     # Configure updated to work with NVIDIA compilers
     patch('nvhpc.patch', when='@6.5 %nvhpc')
 
     # Configure updated to work with Fujitsu compilers
     patch('fj.6.5.patch', when='@6.5+patch %fj')
     patch('fj.6.6.patch', when='@6.6:6.7+patch %fj')
-    patch('aocc_6.7.patch', when='@6.7+patch %aocc')
 
     # extlibs_makefile updated to work with fujitsu compilers
     patch('fj-fox.patch', when='+patch %fj')
@@ -403,8 +405,10 @@ class QuantumEspresso(Package):
             )
 
             options.extend([
-                '--with-elpa-include={0}'.format(elpa_include)
+                '--with-elpa-include={0}'.format(elpa_include),
+                '--with-elpa-version={0}'.format(elpa.version.version[0]),
             ])
+
             elpa_suffix = '_openmp' if '+openmp' in elpa else ''
 
             # Currently AOCC support only static libraries of ELPA
