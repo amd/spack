@@ -51,6 +51,7 @@ class Amdfftw(FftwBase):
     conflicts('precision=quad', when='@2.2 %aocc', msg="AOCC clang doesn't support quad precision")
     conflicts('+debug', when='@2.2 %aocc', msg="AOCC clang doesn't support debug")
     conflicts('%gcc@:7.2', when="@2.2:", msg="Required GCC version above 7.2 for AMDFFTW")
+    conflicts('+amd-fast-planner', when="@2.2", msg="amd-fast-planner is supported from 3.0 onwards")
     conflicts(
         '+amd-fast-planner',
         when='precision=quad',
