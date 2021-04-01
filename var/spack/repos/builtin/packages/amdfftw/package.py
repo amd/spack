@@ -80,6 +80,11 @@ class Amdfftw(FftwBase):
         else:
             options.append('--disable-shared')
 
+        if '+debug' in spec:
+            options.append('--enable-debug')
+        else:
+            options.append('--disable-debug')
+
         if '+openmp' in spec:
             options.append('--enable-openmp')
         else:
