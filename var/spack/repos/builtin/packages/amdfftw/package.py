@@ -70,7 +70,7 @@ class Amdfftw(FftwBase):
         ]
 
         # Check if compiler is AOCC
-        if spec.satisfies('@2.2 %aocc'):
+        if spec.satisfies('%aocc'):
             options.append("CC={0}".format(os.path.basename(spack_cc)))
             options.append("FC={0}".format(os.path.basename(spack_fc)))
             options.append("F77={0}".format(os.path.basename(spack_fc)))
