@@ -245,7 +245,7 @@ class Hdf5(AutotoolsPackage):
         # sanity check in configure, so this doesn't merit a variant.
         extra_args = ['--enable-unsupported',
                       '--enable-symbols=yes',
-                      '--with-zlib']
+                      '--with-zlib=%s' % self.spec['zlib'].prefix]
         extra_args += self.enable_or_disable('threadsafe')
         extra_args += self.enable_or_disable('cxx')
         extra_args += self.enable_or_disable('hl')
@@ -286,6 +286,10 @@ class Hdf5(AutotoolsPackage):
                 'CXXFLAGS=' + self.compiler.cxx_pic_flag,
                 'FCFLAGS='  + self.compiler.fc_pic_flag,
             ])
+
+        # Fujitsu Compiler dose not add  Fortran runtime in rpath.
+        if '+fortran %fj' in self.spec:
+            extra_args.append('LDFLAGS=-lfj90i -lfj90f -lfjsrcinfo -lelf')
 
         if '+mpi' in self.spec:
             # The HDF5 configure script warns if cxx and mpi are enabled
