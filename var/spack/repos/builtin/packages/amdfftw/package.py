@@ -66,7 +66,7 @@ class Amdfftw(FftwBase):
         # Base options
         options = [
             '--prefix={0}'.format(prefix),
-            '--enable-amd-opt',
+            '--enable-amd-opt'
         ]
 
         # Check if compiler is AOCC
@@ -82,8 +82,8 @@ class Amdfftw(FftwBase):
 
         if '+debug' in spec:
             options.append('--enable-debug')
-        else:
-            options.append('--disable-debug')
+        #else:
+        #    options.append('--disable-debug')
 
         if '+openmp' in spec:
             options.append('--enable-openmp')
@@ -109,6 +109,9 @@ class Amdfftw(FftwBase):
 
         if not self.compiler.f77 or not self.compiler.fc:
             options.append("--disable-fortran")
+
+        arch = spec.architecture
+        options.append("AMD_ARCH={0}".format(arch.target.optimization_flags(spec.compiler).split("=")[-1]))
 
         # Specific SIMD support.
         # float and double precisions are supported
