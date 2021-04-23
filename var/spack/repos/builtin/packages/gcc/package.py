@@ -29,6 +29,7 @@ class Gcc(AutotoolsPackage, GNUMirrorPackage):
 
     version('master', branch='master')
 
+    version('10.3.0', sha256='64f404c1a650f27fc33da242e1f2df54952e3963a49e06e73f6940f3223ac344')
     version('10.2.0', sha256='b8dd4368bb9c7f0b98188317ee0254dd8cc99d1e3a18d0ff146c855fe16c1d8c')
     version('10.1.0', sha256='b6898a23844b656f1b68691c5c012036c2e694ac4b53a8918d4712ad876e7ea2')
 
@@ -121,11 +122,14 @@ class Gcc(AutotoolsPackage, GNUMirrorPackage):
     depends_on('isl@0.15:0.20', when='@9:9.9 +graphite')
     depends_on('isl@0.15:', when='@10: +graphite')
     depends_on('zlib', when='@6:')
-    depends_on('zstd', when='@10:')
+    # GCC only tries to link with -lzstd but it requires
+    # -pthread too when linking against libzstd.a, so
+    # disable multithreading by default
+    depends_on('zstd ~multithread', when='@10:')
     depends_on('diffutils', type='build')
     depends_on('iconv', when='platform=darwin')
     depends_on('gnat', when='languages=ada')
-    depends_on('binutils~libiberty', when='+binutils', type=('build', 'link', 'run'))
+    depends_on('binutils+ld+plugins~libiberty', when='+binutils', type=('build', 'link', 'run'))
     depends_on('zip', type='build', when='languages=java')
     depends_on('cuda@:10', when='+nvptx')
 
@@ -463,7 +467,10 @@ class Gcc(AutotoolsPackage, GNUMirrorPackage):
             options.append('--with-system-zlib')
 
         if 'zstd' in spec:
-            options.append('--with-zstd={0}'.format(spec['zstd'].prefix))
+            options.append('--with-zstd-include={0}'.format(
+                spec['zstd'].headers.directories[0]))
+            options.append('--with-zstd-lib={0}'.format(
+                spec['zstd'].libs.directories[0]))
 
         # Enabling language "jit" requires --enable-host-shared.
         if 'languages=jit' in spec:

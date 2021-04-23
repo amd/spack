@@ -70,7 +70,7 @@ class Amdfftw(FftwBase):
         ]
 
         # Check if compiler is AOCC
-        if spec.satisfies('%aocc'):
+        if '%aocc' in spec:
             options.append("CC={0}".format(os.path.basename(spack_cc)))
             options.append("FC={0}".format(os.path.basename(spack_fc)))
             options.append("F77={0}".format(os.path.basename(spack_fc)))
@@ -82,8 +82,6 @@ class Amdfftw(FftwBase):
 
         if '+debug' in spec:
             options.append('--enable-debug')
-        #else:
-        #    options.append('--disable-debug')
 
         if '+openmp' in spec:
             options.append('--enable-openmp')
@@ -102,7 +100,7 @@ class Amdfftw(FftwBase):
             options.append('--disable-mpi')
             options.append('--disable-amd-mpifft')
 
-        if spec.satisfies('+amd-fast-planner'):
+        if '+amd-fast-planner' in spec:
             options.append('--enable-amd-fast-planner')
         else:
             options.append('--disable-amd-fast-planner')
@@ -110,8 +108,15 @@ class Amdfftw(FftwBase):
         if not self.compiler.f77 or not self.compiler.fc:
             options.append("--disable-fortran")
 
+        # Cross compilation is supported in amd-fftw by making use of target
+        # variable to set AMD_ARCH configure option.
+        # Spack user can not directly use AMD_ARCH for this purpose but should
+        # use target variable to set appropriate -march option in AMD_ARCH.
         arch = spec.architecture
-        options.append("AMD_ARCH={0}".format(arch.target.optimization_flags(spec.compiler).split("=")[-1]))
+        options.append(
+            "AMD_ARCH={0}".format(
+                arch.target.optimization_flags(
+                    spec.compiler).split("=")[-1]))
 
         # Specific SIMD support.
         # float and double precisions are supported
