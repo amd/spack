@@ -19,9 +19,10 @@ class Vasp(MakefilePackage):
     url      = "file://{0}/vasp.5.4.4.pl2.tgz".format(os.getcwd())
     manual_download = True
 
+    version('6.2.0', sha256='49e7ba351bd634bc5f5f67a8ef1e38e64e772857a1c02f602828898a84197e25')
     version('6.1.1', sha256='e37a4dfad09d3ad0410833bcd55af6b599179a085299026992c2d8e319bf6927')
     version('5.4.4.pl2', sha256='98f75fd75399a23d76d060a6155f4416b340a1704f256a00146f89024035bc8e')
-    version('5.4.4', sha256='5bd2449462386f01e575f9adf629c08cb03a13142806ffb6a71309ca4431cfb3')
+    version('5.4.4', sha256='b2fa3d836dd73489365f14792526c65c5f6901644d265a5c6f6cc91c8348cf5b')
 
     resource(name='vaspsol',
              git='https://github.com/henniggroup/VASPsol.git',
@@ -41,9 +42,9 @@ class Vasp(MakefilePackage):
     depends_on('rsync', type='build')
     depends_on('blas')
     depends_on('lapack')
-    depends_on('fftw')
+    depends_on('fftw-api')
     depends_on('mpi', type=('build', 'link', 'run'))
-    depends_on('netlib-scalapack', when='+scalapack')
+    depends_on('scalapack', when='+scalapack')
     depends_on('cuda', when='+cuda')
     depends_on('qd', when='%nvhpc')
 
@@ -67,6 +68,25 @@ class Vasp(MakefilePackage):
             filter_file('/opt/pgi/qd-2.3.17/install/lib',
                         spec['qd'].prefix.lib, make_include)
             filter_file('^SCALAPACK[ ]{0,}=.*$', 'SCALAPACK ?=', make_include)
+        elif '%aocc' in spec:
+            copy(
+                join_path('arch', 'makefile.include.linux_gnu'),
+                join_path('arch', 'makefile.include.linux_aocc')
+            )
+            make_include = join_path('arch', 'makefile.include.linux_aocc')
+            filter_file(
+                'gcc', '{0} {1}'.format(spack_cc, '-Mfree'),
+                make_include, string=True
+            )
+            filter_file('g++', spack_cxx, make_include, string=True)
+            filter_file('^CFLAGS_LIB[ ]{0,}=.*$',
+                        'CFLAGS_LIB = -O3', make_include)
+            filter_file('^FFLAGS_LIB[ ]{0,}=.*$',
+                        'FFLAGS_LIB = -O2', make_include)
+            filter_file('^SCALAPACK[ ]{0,}=.*$',
+                        'SCALAPACK ?=', make_include)
+            filter_file('^OFLAG[ ]{0,}=.*$',
+                        'OFLAG = -O3', make_include)
         else:
             make_include = join_path('arch',
                                      'makefile.include.linux_' +
@@ -117,8 +137,12 @@ class Vasp(MakefilePackage):
         if '%nvhpc' in self.spec:
             cpp_options.extend(['-DHOST=\\"LinuxPGI\\"', '-DPGI16',
                                 '-Dqd_emulate'])
+        elif '%aocc' in self.spec:
+            cpp_options.extend(['-DHOST=\\"LinuxGNU\\"',
+                                '-Dfock_dblbuf'])
         else:
             cpp_options.append('-DHOST=\\"LinuxGNU\\"')
+
         if self.spec.satisfies('@6:'):
             cpp_options.append('-Dvasp6')
 
@@ -128,10 +152,12 @@ class Vasp(MakefilePackage):
             fflags.append('-w')
         elif '%nvhpc' in spec:
             fflags.extend(['-Mnoupcase', '-Mbackslash', '-Mlarge_arrays'])
+        elif '%aocc' in spec:
+            fflags.extend(['-fno-fortran-main', '-Mbackslash', '-ffast-math'])
 
         spack_env.set('BLAS', spec['blas'].libs.ld_flags)
         spack_env.set('LAPACK', spec['lapack'].libs.ld_flags)
-        spack_env.set('FFTW', spec['fftw'].prefix)
+        spack_env.set('FFTW', spec['fftw-api'].prefix)
         spack_env.set('MPI_INC', spec['mpi'].prefix.include)
 
         if '%nvhpc' in spec:
@@ -139,7 +165,7 @@ class Vasp(MakefilePackage):
 
         if '+scalapack' in spec:
             cpp_options.append('-DscaLAPACK')
-            spack_env.set('SCALAPACK', spec['netlib-scalapack'].libs.ld_flags)
+            spack_env.set('SCALAPACK', spec['scalapack'].libs.ld_flags)
 
         if '+cuda' in spec:
             cpp_gpu = ['-DCUDA_GPU', '-DRPROMU_CPROJ_OVERLAP',
