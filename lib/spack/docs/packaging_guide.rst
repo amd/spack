@@ -920,12 +920,13 @@ For some packages, source code is provided in a Version Control System
 (VCS) repository rather than in a tarball.  Spack can fetch packages
 from VCS repositories. Currently, Spack supports fetching with `Git
 <git-fetch_>`_, `Mercurial (hg) <hg-fetch_>`_, `Subversion (svn)
-<svn-fetch_>`_, and `Go <go-fetch_>`_.  In all cases, the destination
+<svn-fetch_>`_, `CVS (cvs) <cvs-fetch_>`_, and `Go <go-fetch_>`_.
+In all cases, the destination
 is the standard stage source path.
 
 To fetch a package from a source repository, Spack needs to know which
 VCS to use and where to download from. Much like with ``url``, package
-authors can specify a class-level ``git``, ``hg``, ``svn``, or ``go``
+authors can specify a class-level ``git``, ``hg``, ``svn``, ``cvs``, or ``go``
 attribute containing the correct download location.
 
 Many packages developed with Git have both a Git repository as well as
@@ -1173,6 +1174,55 @@ you can check out a branch or tag by changing the URL. If you want to
 package multiple branches, simply add a ``svn`` argument to each
 version directive.
 
+.. _cvs-fetch:
+
+^^^
+CVS
+^^^
+
+CVS (Concurrent Versions System) is an old centralized version control
+system. It is a predecessor of Subversion.
+
+To fetch with CVS, use the ``cvs``, branch, and ``date`` parameters.
+The destination directory will be the standard stage source path.
+
+Fetching the head
+  Simply add a ``cvs`` parameter to the package:
+
+  .. code-block:: python
+
+     class Example(Package):
+
+         cvs = ":pserver:outreach.scidac.gov/cvsroot%module=modulename"
+
+         version('1.1.2.4')
+
+  CVS repository locations are described using an older syntax that
+  is different from today's ubiquitous URL syntax. ``:pserver:``
+  denotes the transport method. CVS servers can host multiple
+  repositories (called "modules") at the same location, and one needs
+  to specify both the server location and the module name to access.
+  Spack combines both into one string using the ``%module=modulename``
+  suffix shown above.
+
+  This download method is untrusted.
+
+Fetching a date
+  Versions in CVS are commonly specified by date. To fetch a
+  particular branch or date, add a ``branch`` and/or ``date`` argument
+  to the version directive:
+
+  .. code-block:: python
+
+     version('2021.4.22', branch='branchname', date='2021-04-22')
+
+  Unfortunately, CVS does not identify repository-wide commits via a
+  revision or hash like Subversion, Git, or Mercurial do. This makes
+  it impossible to specify an exact commit to check out.
+
+CVS has more features, but since CVS is rarely used these days, Spack
+does not support all of them.
+
 .. _go-fetch:
 
 ^^
@@ -1207,7 +1257,7 @@ Variants
 Many software packages can be configured to enable optional
 features, which often come at the expense of additional dependencies or
 longer build times. To be flexible enough and support a wide variety of
-use cases, Spack permits to expose to the end-user the ability to choose
+use cases, Spack allows you to expose to the end-user the ability to choose
 which features should be activated in a package at the time it is installed.
 The mechanism to be employed is the :py:func:`spack.directives.variant` directive.
 
@@ -2725,6 +2775,57 @@ packages be built with MVAPICH and GCC.
 
 See the :ref:`concretization-preferences` section for more details.
 
+
+.. _group_when_spec:
+
+----------------------------
+Common ``when=`` constraints
+----------------------------
+
+In case a package needs many directives to share the whole ``when=``
+argument, or just part of it, Spack allows you to group the common part
+under a context manager:
+
+.. code-block:: python
+
+   class Gcc(AutotoolsPackage):
+
+       with when('+nvptx'):
+           depends_on('cuda')
+           conflicts('@:6', msg='NVPTX only supported in gcc 7 and above')
+           conflicts('languages=ada')
+           conflicts('languages=brig')
+           conflicts('languages=go')
+
+The snippet above is equivalent to the more verbose:
+
+.. code-block:: python
+
+   class Gcc(AutotoolsPackage):
+
+       depends_on('cuda', when='+nvptx')
+       conflicts('@:6', when='+nvptx', msg='NVPTX only supported in gcc 7 and above')
+       conflicts('languages=ada', when='+nvptx')
+       conflicts('languages=brig', when='+nvptx')
+       conflicts('languages=go', when='+nvptx')
+
+Constraints stemming from the context are added to what is explicitly present in the
+``when=`` argument of a directive, so:
+
+.. code-block:: python
+
+   with when('+elpa'):
+       depends_on('elpa+openmp', when='+openmp')
+
+is equivalent to:
+
+.. code-block:: python
+
+   depends_on('elpa+openmp', when='+openmp+elpa')
+
+Constraints from nested context managers are also added together, but they are rarely
+needed or recommended.
+
 .. _install-method:
 
 ------------------
@@ -4045,31 +4146,31 @@ other checks.
    * - Build System Class
      - Post-Build Phase Method (Runs)
      - Post-Install Phase Method (Runs)
-   * - `AutotoolsPackage <build_systems/autotoolspackage>`
+   * - :ref:`AutotoolsPackage <autotoolspackage>`
      - ``check`` (``make test``, ``make check``)
      - ``installcheck`` (``make installcheck``)
-   * - `CMakePackage <build_systems/cmakepackage>`
+   * - :ref:`CMakePackage <cmakepackage>`
      - ``check`` (``make check``, ``make test``)
      - Not applicable
-   * - `MakefilePackage <build_systems/makefilepackage>`
+   * - :ref:`MakefilePackage <makefilepackage>`
      - ``check`` (``make test``, ``make check``)
      - ``installcheck`` (``make installcheck``)
-   * - `MesonPackage <build_systems/mesonpackage>`
+   * - :ref:`MesonPackage <mesonpackage>`
      - ``check`` (``make test``, ``make check``)
      - Not applicable
-   * - `PerlPackage <build_systems/perlpackage>`
+   * - :ref:`PerlPackage <perlpackage>`
      - ``check`` (``make test``)
      - Not applicable
-   * - `PythonPackage <build_systems/pythonpackage>`
+   * - :ref:`PythonPackage <pythonpackage>`
      - Not applicable
      - ``test`` (module imports)
-   * - `QMakePackage <build_systems/qmakepackage>`
+   * - :ref:`QMakePackage <qmakepackage>`
      - ``check`` (``make check``)
      - Not applicable
-   * - `SConsPackage <build_systems/sconspackage>`
+   * - :ref:`SConsPackage <sconspackage>`
      - ``build_test`` (must be overridden)
      - Not applicable
-   * - `SIPPackage <build_systems/sippackage>`
+   * - :ref:`SIPPackage <sippackage>`
      - Not applicable
      - ``test`` (module imports)
 
@@ -4293,19 +4394,37 @@ can be implemented as shown below.
 
 In this case, the method copies the associated files from the build
 stage **after** the software is installed to the package's metadata
-directory. The result is the following directory and files will be
-available for use in stand-alone tests:
+directory. The result is the directory and files will be cached in
+paths under ``self.install_test_root`` as follows:
 
-* ``join_path(self.install_test_root, 'tests')`` along with its files and subdirectories
+* ``join_path(self.install_test_root, 'tests')`` along with its files
+  and subdirectories
 * ``join_path(self.install_test_root, 'examples', 'foo.c')``
 * ``join_path(self.install_test_root, 'examples', 'bar.c')``
+
+These paths are **automatically copied** to the test stage directory
+where they are available to the package's ``test`` method through the
+``self.test_suite.current_test_cache_dir`` property. In our example,
+the method can access the directory and files using the following
+paths:
+
+* ``join_path(self.test_suite.current_test_cache_dir, 'tests')``
+* ``join_path(self.test_suite.current_test_cache_dir, 'examples', 'foo.c')``
+* ``join_path(self.test_suite.current_test_cache_dir, 'examples', 'bar.c')``
+
+.. note::
+
+    Library developers will want to build the associated tests under
+    the ``self.test_suite.current_test_cache_dir`` and against their
+    **installed** libraries before running them.
 
 .. note::
 
     While source and input files are generally recommended, binaries
     **may** also be cached by the build process for install testing.
     Only you, as the package writer or maintainer, know whether these
-    would be appropriate stand-alone tests.
+    would be appropriate for ensuring the installed software continues
+    to work as the underlying system evolves.
 
 .. note::
 
@@ -4327,11 +4446,12 @@ Examples include:
 - expected test output
 
 These extra files should be added to the ``test`` subdirectory of the
-package in the Spack repository. Spack will automatically copy any files
-in that directory to the test staging directory during stand-alone testing.
+package in the Spack repository. 
 
-The ``test`` method can access those files from the
-``self.test_suite.current_test_data_dir`` directory.
+Spack will **automatically copy** the contents of that directory to the
+test staging directory for stand-alone testing. The ``test`` method can
+access those files using the ``self.test_suite.current_test_data_dir``
+property.
 
 .. _expected_test_output_from_file:
 
@@ -4530,13 +4650,17 @@ where each argument has the following meaning:
   
   The default of ``None`` corresponds to the current directory (``'.'``).
 
+"""""""""""""""""""""""""""""""""""""""""
+Accessing package- and test-related files
+"""""""""""""""""""""""""""""""""""""""""
+
 You may need to access files from one or more locations when writing
-the tests. This can happen if the software's repository does not
+stand-alone tests. This can happen if the software's repository does not
 include test source files or includes files but no way to build the
 executables using the installed headers and libraries. In these
 cases, you may need to reference the files relative to one or more
-root directory and associated package property. These are given in
-the table below.
+root directory. The properties containing package- and test-related
+directory paths are provided in the table below.
 
 .. list-table:: Directory-to-property mapping
    :header-rows: 1
@@ -4550,10 +4674,16 @@ the table below.
    * - Package Dependency's Files
      - ``self.spec['<dependency-package>'].prefix``
      - ``self.spec['trilinos'].prefix.include``
-   * - Copied Build-time Files
+   * - Test Suite Stage Files
+     - ``self.test_suite.stage``
+     - ``join_path(self.test_suite.stage, 'results.txt')``
+   * - Cached Build-time Files
      - ``self.install_test_root``
      - ``join_path(self.install_test_root, 'examples', 'foo.c')``
-   * - Custom Package Files
+   * - Staged Cached Build-time Files
+     - ``self.test_suite.current_test_cache_dir``
+     - ``join_path(self.test_suite.current_test_cache_dir, 'examples', 'foo.c')``
+   * - Staged Custom Package Files
      - ``self.test_suite.current_test_data_dir``
      - ``join_path(self.test_suite.current_test_data_dir, 'hello.f90')``
 
@@ -4800,10 +4930,10 @@ Filtering functions
 
      .. code-block:: python
 
-        filter_file(r'^CC\s*=.*',  spack_cc,  'Makefile')
-        filter_file(r'^CXX\s*=.*', spack_cxx, 'Makefile')
-        filter_file(r'^F77\s*=.*', spack_f77, 'Makefile')
-        filter_file(r'^FC\s*=.*',  spack_fc,  'Makefile')
+        filter_file(r'^\s*CC\s*=.*',  'CC = '  + spack_cc,  'Makefile')
+        filter_file(r'^\s*CXX\s*=.*', 'CXX = ' + spack_cxx, 'Makefile')
+        filter_file(r'^\s*F77\s*=.*', 'F77 = ' + spack_f77, 'Makefile')
+        filter_file(r'^\s*FC\s*=.*',  'FC = '  + spack_fc,  'Makefile')
 
   #. Replacing ``#!/usr/bin/perl`` with ``#!/usr/bin/env perl`` in ``bib2xhtml``:
 

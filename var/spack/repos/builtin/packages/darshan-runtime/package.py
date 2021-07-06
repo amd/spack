@@ -3,8 +3,9 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
-from spack import *
 import os
+
+from spack import *
 
 
 class DarshanRuntime(Package):
@@ -15,13 +16,14 @@ class DarshanRuntime(Package):
     systems where you intend to instrument MPI applications."""
 
     homepage = "http://www.mcs.anl.gov/research/projects/darshan/"
-    url = "http://ftp.mcs.anl.gov/pub/darshan/releases/darshan-3.1.0.tar.gz"
-    git      = "https://xgitlab.cels.anl.gov/darshan/darshan.git"
+    url      = "http://ftp.mcs.anl.gov/pub/darshan/releases/darshan-3.1.0.tar.gz"
+    git      = "https://github.com/darshan-hpc/darshan.git"
 
     maintainers = ['shanedsnyder', 'carns']
 
-    version('master', branch='master', submodules=True)
-    version('3.3.0',      sha256='2e8bccf28acfa9f9394f2084ec18122c66e45d966087fa2e533928e824fcb57a', preferred=True)
+    version('main', branch='main', submodules=True)
+    version('3.3.1', sha256='281d871335977d0592a49d053df93d68ce1840f6fdec27fea7a59586a84395f7')
+    version('3.3.0', sha256='2e8bccf28acfa9f9394f2084ec18122c66e45d966087fa2e533928e824fcb57a')
     version('3.3.0-pre2', sha256='0fc09f86f935132b7b05df981b05cdb3796a1ea02c7acd1905323691df65e761')
     version('3.3.0-pre1', sha256='1c655359455b5122921091bab9961491be58a5f0158f073d09fe8cc772bd0812')
     version('3.2.1', sha256='d63048b7a3d1c4de939875943e3e7a2468a9034fcb68585edbc87f57f622e7f7')
@@ -37,14 +39,18 @@ class DarshanRuntime(Package):
     depends_on('hdf5', when='+hdf5')
     depends_on('papi', when='+apxc')
 
-    variant('slurm', default=False, description='Use Slurm Job ID')
-    variant('cobalt', default=False, description='Use Coblat Job Id')
-    variant('pbs', default=False, description='Use PBS Job Id')
     variant('mpi', default=True, description='Compile with MPI support')
     variant('hdf5', default=False, description='Compile with HDF5 module')
     variant('apmpi', default=False, description='Compile with AutoPerf MPI module')
     variant('apmpi_sync', default=False, description='Compile with AutoPerf MPI module (with collective synchronization timing)')
     variant('apxc', default=False, description='Compile with AutoPerf XC module')
+    variant(
+        'scheduler',
+        default='NONE',
+        description='queue system scheduler JOB ID',
+        values=('NONE', 'cobalt', 'pbs', 'sge', 'slurm'),
+        multi=False
+    )
 
     conflicts('+hdf5', when='@:3.1.8',
               msg='+hdf5 variant only available starting from version 3.2.0')
@@ -64,6 +70,8 @@ class DarshanRuntime(Package):
             job_id = 'COBALT_JOBID'
         if '+pbs' in spec:
             job_id = 'PBS_JOBID'
+        if '+sge' in spec:
+            job_id = 'JOB_ID'
 
         # TODO: BG-Q and other platform configure options
         options = []

@@ -4,9 +4,10 @@
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
 
+import sys
+
 from spack import *
 from spack.util.environment import is_system_path
-import sys
 
 
 class Root(CMakePackage):
@@ -30,6 +31,7 @@ class Root(CMakePackage):
     # Development version (when more recent than production).
 
     # Production version
+    version('6.24.02', sha256='0507e1095e279ccc7240f651d25966024325179fa85a1259b694b56723ad7c1c')
     version('6.24.00', sha256='9da30548a289211c3122d47dacb07e85d35e61067fac2be6c5a5ff7bda979989')
     version('6.22.08', sha256='6f061ff6ef8f5ec218a12c4c9ea92665eea116b16e1cd4df4f96f00c078a2f6f')
     version('6.22.06', sha256='c4688784a7e946cd10b311040b6cf0b2f75125a7520e04d1af0b746505911b57')
@@ -350,13 +352,16 @@ class Root(CMakePackage):
             define('shared', True),
             define('soversion', True),
             define('testing', self.run_tests),
-            define_from_variant('thread', 'threads')
+            define_from_variant('thread', 'threads'),
+            # The following option makes sure that Cling will call the compiler
+            # it was compiled with at run time; see #17488, #18078 and #23886
+            define('CLING_CXX_PATH', self.compiler.cxx),
         ]
 
         # Options related to ROOT's ability to download and build its own
         # dependencies. Per Spack convention, this should generally be avoided.
         options += [
-            define('builtin_afterimage', True),
+            define_from_variant('builtin_afterimage', 'x'),
             define('builtin_cfitsio', False),
             define('builtin_davix', False),
             define('builtin_fftw3', False),
