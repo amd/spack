@@ -31,13 +31,20 @@ class Amdlibflame(LibflameBase):
 
     _name = 'amdlibflame'
     homepage = "http://developer.amd.com/amd-cpu-libraries/blas-library/#libflame"
-    url = "https://github.com/amd/libflame/archive/3.0.tar.gz"
+    url =  "https://github.com/amd/libflame/archive/3.0.1.tar.gz"
     git = "https://github.com/amd/libflame.git"
 
     maintainers = ['amd-toolchain-support']
 
+    version('3.0.1', sha256='5859e7b39ffbe73115dd598b035f212d36310462cf3a45e555a5087301710776')
     version('3.0', sha256='d94e08b688539748571e6d4c1ec1ce42732eac18bd75de989234983c33f01ced')
     version('2.2', sha256='12b9c1f92d2c2fa637305aaa15cf706652406f210eaa5cbc17aaea9fcfa576dc')
+
+    variant('ilp64', default=False, description='Build with ILP64 support')
+
+    conflicts('+ilp64', when="@:3.0.0",
+              msg="ILP64 is supported from 3.0.1 onwards")
+
 
     patch('aocc-2.2.0.patch', when="@:2.999", level=1)
     patch('cray-compiler-wrapper.patch')
@@ -61,6 +68,9 @@ class Amdlibflame(LibflameBase):
         complex types when compiling with aocc flang"""
         if "@3.0: %aocc" in self.spec:
             args.append("--enable-f2c-dotc")
+
+        if "@3.0.1: +ilp64" in self.spec:
+            args.append("--enable-ILP64")
 
         return args
 
