@@ -28,15 +28,12 @@ class Amdblis(BlisBase):
 
     variant('ilp64', default=False, description='Build with ILP64 support')
 
-    conflicts('+ilp64', when="@:3.0.0",
-              msg="ILP64 is supported from 3.0.1 onwards")
-
 
     def configure_args(self):
         spec = self.spec
         args = super(Amdblis, self).configure_args()
 
-        if spec.satisfies('@3.0.1: +ilp64'):
+        if spec.satisfies('+ilp64'):
             args.append('--blas-int-size=64')
 
         if spec.satisfies('%aocc'):
