@@ -7,13 +7,13 @@ import itertools
 import os
 import os.path
 import stat
-from subprocess import PIPE
-from subprocess import check_call
+from subprocess import PIPE, check_call
 from typing import List  # novm
 
-import llnl.util.tty as tty
 import llnl.util.filesystem as fs
-from llnl.util.filesystem import working_dir, force_remove
+import llnl.util.tty as tty
+from llnl.util.filesystem import force_remove, working_dir
+
 from spack.package import PackageBase, run_after, run_before
 from spack.util.executable import Executable
 
@@ -345,8 +345,11 @@ class AutotoolsPackage(PackageBase):
         """Makes the build targets specified by
         :py:attr:``~.AutotoolsPackage.build_targets``
         """
+        # See https://autotools.io/automake/silent.html
+        params = ['V=1']
+        params += self.build_targets
         with working_dir(self.build_directory):
-            inspect.getmodule(self).make(*self.build_targets)
+            inspect.getmodule(self).make(*params)
 
     def install(self, spec, prefix):
         """Makes the install targets specified by

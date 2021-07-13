@@ -10,18 +10,21 @@ after the system path is set up.
 """
 from __future__ import print_function
 
-import sys
-import re
+import argparse
+import inspect
 import os
 import os.path
-import inspect
 import pstats
-import argparse
+import re
+import signal
+import sys
 import traceback
 import warnings
+
 from six import StringIO
 
 import archspec.cpu
+
 import llnl.util.filesystem as fs
 import llnl.util.tty as tty
 import llnl.util.tty.color as color
@@ -29,15 +32,16 @@ from llnl.util.tty.log import log_output
 
 import spack
 import spack.architecture
-import spack.config
 import spack.cmd
+import spack.config
 import spack.environment as ev
+import spack.modules
 import spack.paths
 import spack.repo
 import spack.store
 import spack.util.debug
-import spack.util.path
 import spack.util.executable as exe
+import spack.util.path
 from spack.error import SpackError
 
 #: names of profile statistics
@@ -647,14 +651,8 @@ def print_setup_info(*info):
         'tcl': list(),
         'lmod': list()
     }
-    module_roots = spack.config.get('modules:default:roots', {})
-    module_roots = spack.config.merge_yaml(
-        module_roots, spack.config.get('config:module_roots', {}))
-    module_roots = dict(
-        (k, v) for k, v in module_roots.items() if k in module_to_roots
-    )
-    for name, path in module_roots.items():
-        path = spack.util.path.canonicalize_path(path)
+    for name in module_to_roots.keys():
+        path = spack.modules.common.root_path(name, 'default')
         module_to_roots[name].append(path)
 
     other_spack_instances = spack.config.get(
@@ -779,21 +777,26 @@ def main(argv=None):
         tty.debug(e)
         e.die()  # gracefully die on any SpackErrors
 
-    except Exception as e:
-        if spack.config.get('config:debug'):
-            raise
-        tty.die(e)
-
     except KeyboardInterrupt:
         if spack.config.get('config:debug'):
             raise
         sys.stderr.write('\n')
-        tty.die("Keyboard interrupt.")
+        tty.error("Keyboard interrupt.")
+        if sys.version_info >= (3, 5):
+            return signal.SIGINT.value
+        else:
+            return signal.SIGINT
 
     except SystemExit as e:
         if spack.config.get('config:debug'):
             traceback.print_exc()
         return e.code
+
+    except Exception as e:
+        if spack.config.get('config:debug'):
+            raise
+        tty.error(e)
+        return 3
 
 
 class SpackCommandError(Exception):
