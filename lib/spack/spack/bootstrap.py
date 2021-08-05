@@ -92,13 +92,14 @@ def make_module_available(module, spec=None, install=False):
     installed_specs = spack.store.db.query(spec, installed=True)
 
     for ispec in installed_specs:
-        # TODO: make sure run-environment is appropriate
-        module_path = os.path.join(ispec.prefix,
-                                   ispec['python'].package.site_packages_dir)
-        module_path_64 = module_path.replace('/lib/', '/lib64/')
+        lib_spd = ispec['python'].package.default_site_packages_dir
+        lib64_spd = lib_spd.replace('lib/', 'lib64/')
+        module_paths = [
+            os.path.join(ispec.prefix, lib_spd),
+            os.path.join(ispec.prefix, lib64_spd)
+        ]
         try:
-            sys.path.append(module_path)
-            sys.path.append(module_path_64)
+            sys.path.extend(module_paths)
             __import__(module)
             return
         except ImportError:
@@ -120,12 +121,14 @@ def make_module_available(module, spec=None, install=False):
         spec.concretize()
     spec.package.do_install()
 
-    module_path = os.path.join(spec.prefix,
-                               spec['python'].package.site_packages_dir)
-    module_path_64 = module_path.replace('/lib/', '/lib64/')
+    lib_spd = spec['python'].package.default_site_packages_dir
+    lib64_spd = lib_spd.replace('lib/', 'lib64/')
+    module_paths = [
+        os.path.join(spec.prefix, lib_spd),
+        os.path.join(spec.prefix, lib64_spd)
+    ]
     try:
-        sys.path.append(module_path)
-        sys.path.append(module_path_64)
+        sys.path.extend(module_paths)
         __import__(module)
         return
     except ImportError:
@@ -138,7 +141,7 @@ def get_executable(exe, spec=None, install=False):
 
     Args:
         exe (str): needed executable name
-        spec (Spec or str): spec to search for exe in (default exe)
+        spec (spack.spec.Spec or str): spec to search for exe in (default exe)
         install (bool): install spec if not available
 
     When ``install`` is True, Spack will use the python used to run Spack as an

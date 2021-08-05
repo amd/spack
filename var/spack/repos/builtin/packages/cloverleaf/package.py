@@ -12,19 +12,18 @@ class Cloverleaf(MakefilePackage):
 
     homepage = "http://uk-mac.github.io/CloverLeaf"
     url      = "http://downloads.mantevo.org/releaseTarballs/miniapps/CloverLeaf/CloverLeaf-1.1.tar.gz"
-    git      = "https://github.com/UK-MAC/CloverLeaf_ref.git"
+    git      = "https://github.com/UK-MAC/CloverLeaf.git"
 
     tags = ['proxy-app']
 
-    # Released versions:
-    version('ref-1.3', sha256='fdff193286a00672bb931baa50d424a2cc19fb5817b62436804eced637e12430', url="https://github.com/UK-MAC/CloverLeaf_ref/archive/refs/tags/v1.3.tar.gz")
+    version('master', tag='master', submodules=True)
     version('1.1', sha256='de87f7ee6b917e6b3d243ccbbe620370c62df890e3ef7bdbab46569b57be132f')
 
     variant('build', default='ref', description='Type of Parallelism Build',
             values=('cuda', 'mpi_only', 'openacc_cray',
                     'openmp_only', 'ref', 'serial'))
-
-    patch('CloverLeaf_ref-1.3.patch', when="@ref-1.3 %aocc")
+    variant('ieee', default=False, description='Build with IEEE standards')
+    variant('debug', default=False, description='Build with DEBUG flags')
 
     depends_on('mpi', when='build=cuda')
     depends_on('mpi', when='build=mpi_only')
@@ -32,7 +31,10 @@ class Cloverleaf(MakefilePackage):
     depends_on('mpi', when='build=ref')
     depends_on('cuda', when='build=cuda')
 
-    conflicts('build=cuda,mpi_only,openacc_cray', when='@ref-1.3 %aocc', msg="AOCC doesnt supports only ref variant")
+    conflicts('build=cuda', when='%aocc', msg="Currently AOCC supports only ref variant")
+    conflicts('build=openacc_cray', when='%aocc', msg="Currently AOCC supports only ref variant")
+    conflicts('build=serial', when='%aocc', msg="Currently AOCC supports only ref variant")
+    conflicts('@1.1', when='%aocc', msg="AOCC support is provided from version v.1.3 and above")
 
     @property
     def type_of_build(self):
@@ -53,41 +55,45 @@ class Cloverleaf(MakefilePackage):
 
     @property
     def build_targets(self):
-        if '@1.1' in self.spec:
-            targets = ['--directory=CloverLeaf_{0}'.format(self.type_of_build)]
+        targets = ['--directory=CloverLeaf_{0}'.format(self.type_of_build)]
 
-            if 'mpi' in self.spec:
-                targets.append('MPI_COMPILER={0}'.format(self.spec['mpi'].mpifc))
-                targets.append('C_MPI_COMPILER={0}'.format(self.spec['mpi'].mpicc))
-            else:
-                targets.append('MPI_COMPILER=f90')
-                targets.append('C_MPI_COMPILER=cc')
+        if 'mpi' in self.spec:
+            targets.append('MPI_COMPILER={0}'.format(self.spec['mpi'].mpifc))
+            targets.append('C_MPI_COMPILER={0}'.format(self.spec['mpi'].mpicc))
+        else:
+            targets.append('MPI_COMPILER=f90')
+            targets.append('C_MPI_COMPILER=cc')
 
-            if '%gcc' in self.spec:
-                targets.append('COMPILER=GNU')
-                targets.append('FLAGS_GNU=')
-                targets.append('CFLAGS_GNU=')
-            elif '%cce' in self.spec:
-                targets.append('COMPILER=CRAY')
-                targets.append('FLAGS_CRAY=')
-                targets.append('CFLAGS_CRAY=')
-            elif '%intel' in self.spec:
-                targets.append('COMPILER=INTEL')
-                targets.append('FLAGS_INTEL=')
-                targets.append('CFLAGS_INTEL=')
-            elif '%pgi' in self.spec:
-                targets.append('COMPILER=PGI')
-                targets.append('FLAGS_PGI=')
-                targets.append('CFLAGS_PGI=')
-            elif '%xl' in self.spec:
-                targets.append('COMPILER=XLF')
-                targets.append('FLAGS_XLF=')
-                targets.append('CFLAGS_XLF=')
-        elif '@ref-1.3' in self.spec:
-            targets = []
+        if '%gcc' in self.spec:
+            targets.append('COMPILER=GNU')
+            targets.append('FLAGS_GNU=')
+            targets.append('CFLAGS_GNU=')
+        elif '%cce' in self.spec:
+            targets.append('COMPILER=CRAY')
+            targets.append('FLAGS_CRAY=')
+            targets.append('CFLAGS_CRAY=')
+        elif '%intel' in self.spec:
+            targets.append('COMPILER=INTEL')
+            targets.append('FLAGS_INTEL=')
+            targets.append('CFLAGS_INTEL=')
+        elif '%aocc' in self.spec:
+            targets.append('COMPILER=AOCC')
+        elif '%pgi' in self.spec:
+            targets.append('COMPILER=PGI')
+            targets.append('FLAGS_PGI=')
+            targets.append('CFLAGS_PGI=')
+        elif '%xl' in self.spec:
+            targets.append('COMPILER=XLF')
+            targets.append('FLAGS_XLF=')
+            targets.append('CFLAGS_XLF=')
 
-            if '%aocc' in self.spec:
-                targets.append('COMPILER=AOCC')
+        # Explicit mention of else clause is not working as expected
+        # So, not mentioning them
+        if '+debug' in self.spec:
+            targets.append('DEBUG=1')
+
+        if '+ieee' in self.spec:
+            targets.append('IEEE=1')
 
         return targets
 
@@ -96,13 +102,12 @@ class Cloverleaf(MakefilePackage):
         mkdirp(prefix.bin)
         mkdirp(prefix.doc.tests)
 
-        if '@1.1' in self.spec:
-            install('README.md', prefix.doc)
-            install('documentation.txt', prefix.doc)
+        install('README.md', prefix.doc)
+        install('documentation.txt', prefix.doc)
 
-            install('CloverLeaf_{0}/clover_leaf'.format(self.type_of_build),
-                    prefix.bin)
-            install('CloverLeaf_{0}/clover.in'.format(self.type_of_build),
-                    prefix.bin)
-            install('CloverLeaf_{0}/*.in'.format(self.type_of_build),
-                    prefix.doc.tests)
+        install('CloverLeaf_{0}/clover_leaf'.format(self.type_of_build),
+                prefix.bin)
+        install('CloverLeaf_{0}/clover.in'.format(self.type_of_build),
+                prefix.bin)
+        install('CloverLeaf_{0}/*.in'.format(self.type_of_build),
+                prefix.doc.tests)
