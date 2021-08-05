@@ -30,6 +30,8 @@ class Vasp(MakefilePackage):
              tag='V1.0',
              when='+vaspsol')
 
+    variant('openmp', default=False,
+            description='Enable OPENMP build')
     variant('scalapack', default=False,
             description='Enables build with SCALAPACK')
 
@@ -51,6 +53,7 @@ class Vasp(MakefilePackage):
 
     conflicts('%gcc@:8', msg='GFortran before 9.x does not support all features needed to build VASP')
     conflicts('+vaspsol', when='+cuda', msg='+vaspsol only available for CPU')
+    conflicts('+openmp', when='@:6.1.1', msg='openmp support started from 6.2')
 
     parallel = False
 
@@ -70,11 +73,18 @@ class Vasp(MakefilePackage):
                         spec['qd'].prefix.lib, make_include)
             filter_file('^SCALAPACK[ ]{0,}=.*$', 'SCALAPACK ?=', make_include)
         elif '%aocc' in spec:
-            copy(
-                join_path('arch', 'makefile.include.linux_gnu'),
-                join_path('arch', 'makefile.include.linux_aocc')
-            )
-            make_include = join_path('arch', 'makefile.include.linux_aocc')
+            if '+openmp' in spec:
+                copy(
+                    join_path('arch', 'makefile.include.linux_gnu_omp'),
+                    join_path('arch', 'makefile.include.linux_aocc_omp')
+                )
+                make_include = join_path('arch', 'makefile.include.linux_aocc_omp')
+            else:
+                copy(
+                    join_path('arch', 'makefile.include.linux_gnu'),
+                    join_path('arch', 'makefile.include.linux_aocc')
+                )
+                make_include = join_path('arch', 'makefile.include.linux_aocc')
             filter_file(
                 'gcc', '{0} {1}'.format(spack_cc, '-Mfree'),
                 make_include, string=True
@@ -88,6 +98,12 @@ class Vasp(MakefilePackage):
                         'SCALAPACK ?=', make_include)
             filter_file('^OFLAG[ ]{0,}=.*$',
                         'OFLAG = -O3', make_include)
+            filter_file('^FC[ ]{0,}=.*$',
+                        'FC = {0}'.format(spec['mpi'].mpifc),
+                        make_include, string=True)
+            filter_file('^FCL[ ]{0,}=.*$',
+                        'FCL = {0}'.format(spec['mpi'].mpifc),
+                        make_include, string=True)
         else:
             make_include = join_path('arch',
                                      'makefile.include.linux_' +
@@ -141,6 +157,8 @@ class Vasp(MakefilePackage):
         elif '%aocc' in self.spec:
             cpp_options.extend(['-DHOST=\\"LinuxGNU\\"',
                                 '-Dfock_dblbuf'])
+            if '+openmp' in self.spec:
+                cpp_options.extend(['-D_OPENMP'])
         else:
             cpp_options.append('-DHOST=\\"LinuxGNU\\"')
 
