@@ -4,6 +4,8 @@
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
 import os
+import sys
+
 from spack import *
 
 
@@ -20,6 +22,7 @@ class Lbann(CMakePackage, CudaPackage, ROCmPackage):
     maintainers = ['bvanessen']
 
     version('develop', branch='develop')
+    version('0.102', sha256='3734a76794991207e2dd2221f05f0e63a86ddafa777515d93d99d48629140f1a')
     version('0.101', sha256='69d3fe000a88a448dc4f7e263bcb342c34a177bd9744153654528cd86335a1f7')
     version('0.100', sha256='d1bab4fb6f1b80ae83a7286cc536a32830890f6e5b0c3107a17c2600d0796912')
     version('0.99',   sha256='3358d44f1bc894321ce07d733afdf6cb7de39c33e3852d73c9f31f530175b7cd')
@@ -68,6 +71,15 @@ class Lbann(CMakePackage, CudaPackage, ROCmPackage):
     variant('python', default=True, description='Support for Python extensions (e.g. Data Reader)')
     variant('pfe', default=True, description='Python Frontend for generating and launching models')
     variant('boost', default=False, description='Enable callbacks that use Boost libraries')
+    variant('asan', default=False, description='Build with support for address-sanitizer')
+
+    # LBANN benefits from high performance linkers, but passing these in as command
+    # line options forces the linker flags to unnecessarily propagate to all
+    # dependent packages. Don't include gold or lld as dependencies
+    variant('gold', default=False, description='Use gold high performance linker')
+    variant("lld", default=False, description="Use lld high performance linker")
+    # Don't expose this a dependency until Spack can find the external properly
+    # depends_on('binutils+gold', type='build', when='+gold')
 
     # Variant Conflicts
     conflicts('@:0.90,0.99:', when='~conduit')
@@ -84,6 +96,14 @@ class Lbann(CMakePackage, CudaPackage, ROCmPackage):
     conflicts('~python', when='@0.91:0.101')
     conflicts('~pfe', when='@0.91:0.101')
 
+    for comp in spack.compilers.supported_compilers():
+        if comp != 'clang':
+            conflicts('+lld', when='%' + comp)
+
+    conflicts("+lld", when="+gold")
+    conflicts('+gold', when='platform=darwin', msg="gold does not work on Darwin")
+    conflicts('+lld', when='platform=darwin', msg="lld does not work on Darwin")
+
     depends_on('cmake@3.17.0:', type='build')
 
     # Specify the correct versions of Hydrogen
@@ -92,7 +112,8 @@ class Lbann(CMakePackage, CudaPackage, ROCmPackage):
     depends_on('hydrogen@1.5.0:', when='@:0.90,0.102:')
 
     # Add Hydrogen variants
-    depends_on('hydrogen +openmp +openmp_blas +shared +int64')
+    depends_on('hydrogen +openmp +shared +int64')
+    depends_on('hydrogen +openmp_blas', when=sys.platform != 'darwin')
     depends_on('hydrogen ~al', when='~al')
     depends_on('hydrogen +al', when='+al')
     depends_on('hydrogen ~cuda', when='~cuda')
@@ -114,11 +135,12 @@ class Lbann(CMakePackage, CudaPackage, ROCmPackage):
     depends_on('aluminum@0.5.0:', when='@:0.90,0.102: +al')
 
     # Add Aluminum variants
-    depends_on('aluminum +cuda +nccl +ht +cuda_rma', when='+al +cuda')
-    depends_on('aluminum +rocm +rccl +ht', when='+al +rocm')
+    depends_on('aluminum +cuda +nccl +cuda_rma', when='+al +cuda')
+    depends_on('aluminum +rocm +rccl', when='+al +rocm')
 
     depends_on('dihydrogen@0.2.0:', when='@:0.90,0.102:')
     depends_on('dihydrogen +openmp', when='+dihydrogen')
+    depends_on('dihydrogen +openmp_blas', when=sys.platform != 'darwin')
     depends_on('dihydrogen ~cuda', when='+dihydrogen ~cuda')
     depends_on('dihydrogen +cuda', when='+dihydrogen +cuda')
     depends_on('dihydrogen ~al', when='+dihydrogen ~al')
@@ -203,6 +225,7 @@ class Lbann(CMakePackage, CudaPackage, ROCmPackage):
     depends_on('protobuf+shared@3.10.0', when='@:0.90,0.99:')
 
     depends_on('py-breathe', type='build', when='+docs')
+    depends_on('py-sphinx-rtd-theme', type='build', when='+docs')
     depends_on('doxygen', type='build', when='+docs')
     depends_on('py-m2r', type='build', when='+docs')
 
@@ -237,6 +260,18 @@ class Lbann(CMakePackage, CudaPackage, ROCmPackage):
                 '-DCNPY_DIR={0}'.format(spec['cnpy'].prefix),
             )
 
+        # Use lld high performance linker
+        if '+lld' in spec:
+            args.extend([
+                '-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld',
+                '-DCMAKE_SHARED_LINKER_FLAGS=-fuse-ld=lld'])
+
+        # Use gold high performance linker
+        if '+gold' in spec:
+            args.extend([
+                '-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold',
+                '-DCMAKE_SHARED_LINKER_FLAGS=-fuse-ld=gold'])
+
         return args
 
     def setup_build_environment(self, env):
@@ -263,6 +298,7 @@ class Lbann(CMakePackage, CudaPackage, ROCmPackage):
             '-DLBANN_DETERMINISTIC:BOOL=%s' % ('+deterministic' in spec),
             '-DLBANN_WITH_HWLOC=%s' % ('+hwloc' in spec),
             '-DLBANN_WITH_ALUMINUM:BOOL=%s' % ('+al' in spec),
+            '-DLBANN_WITH_ADDRESS_SANITIZER:BOOL=%s' % ('+asan' in spec),
             '-DLBANN_WITH_BOOST:BOOL=%s' % ('+boost' in spec),
             '-DLBANN_WITH_CONDUIT:BOOL=%s' % ('+conduit' in spec),
             '-DLBANN_WITH_NVSHMEM:BOOL=%s' % ('+nvshmem' in spec),
@@ -285,6 +321,10 @@ class Lbann(CMakePackage, CudaPackage, ROCmPackage):
                 args.append('-DCMAKE_CUDA_STANDARD=17')
             else:
                 args.append('-DCMAKE_CUDA_STANDARD=14')
+            archs = spec.variants['cuda_arch'].value
+            if archs != 'none':
+                arch_str = ";".join(archs)
+                args.append('-DCMAKE_CUDA_ARCHITECTURES=%s' % arch_str)
 
         if spec.satisfies('@:0.90') or spec.satisfies('@0.95:'):
             args.append(

@@ -3,8 +3,9 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
-from spack import *
 import sys
+
+from spack import *
 
 
 class Lz4(MakefilePackage):
@@ -25,6 +26,9 @@ class Lz4(MakefilePackage):
     version('1.3.1',   sha256='9d4d00614d6b9dec3114b33d1224b6262b99ace24434c53487a0c8fd0b18cfed')
 
     depends_on('valgrind', type='test')
+
+    variant('libs', default='shared,static', values=('shared', 'static'),
+            multi=True, description='Build shared libs, static libs or both')
 
     def url_for_version(self, version):
         url = "https://github.com/lz4/lz4/archive"
@@ -47,7 +51,10 @@ class Lz4(MakefilePackage):
             make(parallel=par)
 
     def install(self, spec, prefix):
-        make('install', 'PREFIX={0}'.format(prefix))
+        make('install',
+             'PREFIX={0}'.format(prefix),
+             'BUILD_SHARED={0}'.format('yes' if 'libs=shared' in self.spec else 'no'),
+             'BUILD_STATIC={0}'.format('yes' if 'libs=static' in self.spec else 'no'))
 
     def patch(self):
         # Remove flags not recognized by the NVIDIA compiler

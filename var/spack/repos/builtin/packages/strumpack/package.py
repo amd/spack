@@ -35,7 +35,7 @@ class Strumpack(CMakePackage, CudaPackage, ROCmPackage):
     version('3.2.0', sha256='34d93e1b2a3b8908ef89804b7e08c5a884cbbc0b2c9f139061627c0d2de282c1')
     version('3.1.1', sha256='c1c3446ee023f7b24baa97b24907735e89ce4ae9f5ef516645dfe390165d1778')
 
-    variant('shared', default=False, description='Build shared libraries')
+    variant('shared', default=True, description='Build shared libraries')
     variant('mpi', default=True, description='Use MPI')
     variant('openmp', default=True,
             description='Enable thread parallellism via tasking with OpenMP')
@@ -93,28 +93,26 @@ class Strumpack(CMakePackage, CudaPackage, ROCmPackage):
               msg='STRUMPACK requires openblas with OpenMP threading support')
 
     patch('intel-19-compile.patch', when='@3.1.1')
+    patch('shared-rocm.patch', when='@5.1.1')
 
     def cmake_args(self):
         spec = self.spec
 
-        def on_off(varstr):
-            return 'ON' if varstr in spec else 'OFF'
-
         args = [
-            '-DSTRUMPACK_USE_MPI=%s' % on_off('+mpi'),
-            '-DSTRUMPACK_USE_OPENMP=%s' % on_off('+openmp'),
-            '-DSTRUMPACK_USE_CUDA=%s' % on_off('+cuda'),
-            '-DSTRUMPACK_USE_HIP=%s' % on_off('+rocm'),
-            '-DTPL_ENABLE_PARMETIS=%s' % on_off('+parmetis'),
-            '-DTPL_ENABLE_SCOTCH=%s' % on_off('+scotch'),
-            '-DTPL_ENABLE_BPACK=%s' % on_off('+butterflypack'),
-            '-DSTRUMPACK_COUNT_FLOPS=%s' % on_off('+count_flops'),
-            '-DSTRUMPACK_TASK_TIMERS=%s' % on_off('+task_timers'),
-            '-DSTRUMPACK_DEV_TESTING=%s' % on_off('+build_dev_tests'),
-            '-DSTRUMPACK_BUILD_TESTS=%s' % on_off('+build_tests'),
+            self.define_from_variant('STRUMPACK_USE_MPI', 'mpi'),
+            self.define_from_variant('STRUMPACK_USE_OPENMP', 'openmp'),
+            self.define_from_variant('STRUMPACK_USE_CUDA', 'cuda'),
+            self.define_from_variant('STRUMPACK_USE_HIP', 'rocm'),
+            self.define_from_variant('TPL_ENABLE_PARMETIS', 'parmetis'),
+            self.define_from_variant('TPL_ENABLE_SCOTCH', 'scotch'),
+            self.define_from_variant('TPL_ENABLE_BPACK', 'butterflypack'),
+            self.define_from_variant('STRUMPACK_COUNT_FLOPS', 'count_flops'),
+            self.define_from_variant('STRUMPACK_TASK_TIMERS', 'task_timers'),
+            self.define_from_variant('STRUMPACK_DEV_TESTING', 'build_dev_tests'),
+            self.define_from_variant('STRUMPACK_BUILD_TESTS', 'build_tests'),
             '-DTPL_BLAS_LIBRARIES=%s' % spec['blas'].libs.joined(";"),
             '-DTPL_LAPACK_LIBRARIES=%s' % spec['lapack'].libs.joined(";"),
-            '-DBUILD_SHARED_LIBS=%s' % on_off('+shared')
+            self.define_from_variant('BUILD_SHARED_LIBS', 'shared')
         ]
 
         if '+mpi' in spec:
@@ -130,7 +128,7 @@ class Strumpack(CMakePackage, CudaPackage, ROCmPackage):
                     '-DCMAKE_Fortran_COMPILER=%s' % spec['mpi'].mpifc
                 ])
             args.extend([
-                '-DSTRUMPACK_C_INTERFACE=%s' % on_off('+c_interface'),
+                self.define_from_variant('STRUMPACK_C_INTERFACE', 'c_interface'),
             ])
 
         if '+cuda' in spec:
@@ -150,10 +148,12 @@ class Strumpack(CMakePackage, CudaPackage, ROCmPackage):
                 args.append('-DHIP_HIPCC_FLAGS=--amdgpu-target={0}'.
                             format(",".join(rocm_archs)))
 
+        if self.spec.satisfies('@:5.1.1'):
+            self.test_data_dir = 'examples/data'
+        else:
+            self.test_data_dir = 'examples/sparse/data'
+        self.test_src_dir = 'test'
         return args
-
-    test_data_dir = 'examples/data'
-    test_src_dir = 'test'
 
     @run_after('install')
     def cache_test_sources(self):
@@ -188,7 +188,7 @@ class Strumpack(CMakePackage, CudaPackage, ROCmPackage):
         test_dir = join_path(self.install_test_root, self.test_src_dir)
         test_exe = 'test_sparse_seq'
         test_exe_mpi = 'test_sparse_mpi'
-        exe_arg = ['../../examples/data/pde900.mtx']
+        exe_arg = [join_path('..', '..', self.test_data_dir, 'pde900.mtx')]
         if '+mpi' in self.spec:
             test_args = ['-n', '4', test_exe_mpi]
             test_args.extend(exe_arg)

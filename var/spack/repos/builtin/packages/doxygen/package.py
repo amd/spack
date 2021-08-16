@@ -3,8 +3,9 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
-from spack import *
 import re
+
+from spack import *
 
 
 class Doxygen(CMakePackage):
@@ -77,6 +78,10 @@ class Doxygen(CMakePackage):
     # https://github.com/Sleepyowl/doxygen/commit/6c380ba91ae41c6d5c409a5163119318932ae2a3?diff=unified
     # Also - https://github.com/doxygen/doxygen/pull/6588
     patch('shared_ptr.patch', when='@1.8.14')
+
+    # Support C++17's nested namespaces a::b::c. For details about this patch, see
+    # https://github.com/doxygen/doxygen/pull/6977/commits/788440279e0f0fdc7dce27ec266d7d5c11bcda1c
+    patch('cpp17_namespaces.patch', when='@1.8.15')
 
     # Workaround for gcc getting stuck in an infinite loop
     patch('gcc-partial-inlining-bug.patch', when='@1.8.20: %gcc@7')

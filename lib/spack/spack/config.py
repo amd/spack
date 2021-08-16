@@ -17,8 +17,8 @@ configuration system behaves.  The scopes are:
 And corresponding :ref:`per-platform scopes <platform-scopes>`. Important
 functions in this module are:
 
-* :py:func:`get_config`
-* :py:func:`update_config`
+* :func:`~spack.config.Configuration.get_config`
+* :func:`~spack.config.Configuration.update_config`
 
 ``get_config`` reads in YAML data for a particular scope and returns
 it. Callers can then modify the data and write it back with
@@ -36,34 +36,35 @@ import os
 import re
 import sys
 from contextlib import contextmanager
-from six import iteritems
-from ordereddict_backport import OrderedDict
 from typing import List  # novm
 
 import ruamel.yaml as yaml
+from ordereddict_backport import OrderedDict
 from ruamel.yaml.error import MarkedYAMLError
+from six import iteritems
 
 import llnl.util.lang
 import llnl.util.tty as tty
 from llnl.util.filesystem import mkdirp
 
-import spack.paths
 import spack.architecture
 import spack.compilers
+import spack.paths
 import spack.schema
+import spack.schema.bootstrap
 import spack.schema.compilers
-import spack.schema.mirrors
-import spack.schema.repos
-import spack.schema.packages
-import spack.schema.modules
 import spack.schema.config
-import spack.schema.upstreams
 import spack.schema.env
-from spack.error import SpackError
-from spack.util.cpus import cpus_available
+import spack.schema.mirrors
+import spack.schema.modules
+import spack.schema.packages
+import spack.schema.repos
+import spack.schema.upstreams
 
 # Hacked yaml for configuration files preserves line numbers.
 import spack.util.spack_yaml as syaml
+from spack.error import SpackError
+from spack.util.cpus import cpus_available
 
 #: Dict from section names -> schema for that section
 section_schemas = {
@@ -74,6 +75,7 @@ section_schemas = {
     'modules': spack.schema.modules.schema,
     'config': spack.schema.config.schema,
     'upstreams': spack.schema.upstreams.schema,
+    'bootstrap': spack.schema.bootstrap.schema
 }
 
 # Same as above, but including keys for environments
@@ -129,7 +131,7 @@ def first_existing(dictionary, keys):
     try:
         return next(k for k in keys if k in dictionary)
     except StopIteration:
-        raise KeyError("None of %s is in dict!" % keys)
+        raise KeyError("None of %s is in dict!" % str(keys))
 
 
 class ConfigScope(object):
@@ -534,7 +536,7 @@ class Configuration(object):
             msg = ('The "{0}" section of the configuration needs to be written'
                    ' to disk, but is currently using a deprecated format. '
                    'Please update it using:\n\n'
-                   '\tspack config [--scope=<scope] update {0}\n\n'
+                   '\tspack config [--scope=<scope>] update {0}\n\n'
                    'Note that previous versions of Spack will not be able to '
                    'use the updated configuration.')
             msg = msg.format(section)
@@ -571,16 +573,17 @@ class Configuration(object):
         YAML config file that looks like this::
 
            config:
-             install_tree: $spack/opt/spack
-             module_roots:
-               lmod:   $spack/share/spack/lmod
+             install_tree:
+               root: $spack/opt/spack
+             build_stage:
+             - $tmpdir/$user/spack-stage
 
         ``get_config('config')`` will return::
 
-           { 'install_tree': '$spack/opt/spack',
-             'module_roots: {
-                 'lmod': '$spack/share/spack/lmod'
+           { 'install_tree': {
+                 'root': '$spack/opt/spack',
              }
+             'build_stage': ['$tmpdir/$user/spack-stage']
            }
 
         """
@@ -648,7 +651,11 @@ class Configuration(object):
 
         while parts:
             key = parts.pop(0)
-            value = value.get(key, default)
+            # cannot use value.get(key, default) in case there is another part
+            # and default is not a dict
+            if key not in value:
+                return default
+            value = value[key]
 
         return value
 
@@ -715,7 +722,7 @@ def override(path_or_scope, value=None):
 
     Arguments:
         path_or_scope (ConfigScope or str): scope or single option to override
-        value (object, optional): value for the single option
+        value (object or None): value for the single option
 
     Temporarily push a scope on the current configuration, then remove it
     after the context completes. If a single option is provided, create
@@ -930,6 +937,7 @@ def validate(data, schema, filename=None):
     on Spack YAML structures.
     """
     import jsonschema
+
     # validate a copy to avoid adding defaults
     # This allows us to round-trip data without adding to it.
     test_data = copy.deepcopy(data)
@@ -1155,7 +1163,7 @@ def default_modify_scope(section='config'):
     priority scope.
 
     Arguments:
-        section (boolean): Section for which to get the default scope.
+        section (bool): Section for which to get the default scope.
             If this is not 'compilers', a general (non-platform) scope is used.
     """
     if section == 'compilers':
@@ -1230,11 +1238,12 @@ def use_configuration(*scopes_or_paths):
 
     saved_config, config = config, configuration
 
-    yield configuration
-
-    # Restore previous config files
-    spack.compilers._cache_config_file = saved_compiler_cache
-    config = saved_config
+    try:
+        yield configuration
+    finally:
+        # Restore previous config files
+        spack.compilers._cache_config_file = saved_compiler_cache
+        config = saved_config
 
 
 @llnl.util.lang.memoized

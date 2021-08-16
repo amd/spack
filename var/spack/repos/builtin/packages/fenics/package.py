@@ -96,11 +96,8 @@ class Fenics(CMakePackage):
     depends_on('pkgconfig', type='build')
     depends_on('zlib', when='+zlib')
 
-    for ver in dolfin_versions:
-        if Version(ver) == Version('2019.1.0'):
-            depends_on('boost+filesystem+program_options+system+iostreams+timer+regex+chrono')
-        else:
-            depends_on('boost+filesystem+program_options+system+iostreams+timer+regex+chrono@1.68.0')
+    depends_on('boost+filesystem+program_options+system+iostreams+timer+regex+chrono')
+    depends_on('boost+filesystem+program_options+system+iostreams+timer+regex+chrono@1.68.0', when='@:2018.99')
 
     depends_on('mpi', when='+mpi')
     depends_on('hdf5+hl+fortran', when='+hdf5+petsc')
@@ -131,6 +128,7 @@ class Fenics(CMakePackage):
             self.define_from_variant('DOLFIN_ENABLE_OPENMP', 'openmp'),
             self.define_from_variant('DOLFIN_ENABLE_CHOLMOD', 'suite-sparse'),
             self.define_from_variant('DOLFIN_ENABLE_HDF5', 'hdf5'),
+            self.define_from_variant('HDF5_NO_FIND_PACKAGE_CONFIG_FILE', 'hdf5'),
             self.define_from_variant('DOLFIN_ENABLE_MPI', 'mpi'),
             self.define_from_variant('DOLFIN_ENABLE_PARMETIS', 'parmetis'),
             self.define_from_variant('DOLFIN_ENABLE_PETSC', 'petsc'),
