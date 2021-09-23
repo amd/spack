@@ -21,7 +21,7 @@ class Boost(Package):
     homepage = "https://www.boost.org"
     url      = "http://downloads.sourceforge.net/project/boost/boost/1.55.0/boost_1_55_0.tar.bz2"
     git      = "https://github.com/boostorg/boost.git"
-    list_url = "http://sourceforge.net/projects/boost/files/boost/"
+    list_url = "https://sourceforge.net/projects/boost/files/boost/"
     list_depth = 1
     maintainers = ['hainest']
 
@@ -248,7 +248,7 @@ class Boost(Package):
     patch('bootstrap-path.patch', when='@1.39.0: platform=cray')
 
     # Patch fix for warnings from commits 2d37749, af1dc84, c705bab, and
-    # 0134441 on http://github.com/boostorg/system.
+    # 0134441 on https://github.com/boostorg/system.
     patch('system-non-virtual-dtor-include.patch', when='@1.69.0',
           level=2)
     patch('system-non-virtual-dtor-test.patch', when='@1.69.0',
@@ -297,6 +297,12 @@ class Boost(Package):
           sha256="3b159d65a0d3d2df2a21c6bf56ffaba943fce92d2d41d628b2c4d2e924e0f421",
           when="@:1.76%cce",
           level=2)
+
+    # Fix building with Intel compilers
+    patch("https://github.com/bfgroup/b2/commit/23212066f0f20358db54568bb16b3fe1d76f88ce.patch",
+          sha256="93f4aad8f88d1437e50d95a2d066390ef3753b99ef5de24f7a46bc083bd6df06",
+          when="@1.77.0",
+          working_dir="tools/build")
 
     def patch(self):
         # Disable SSSE3 and AVX2 when using the NVIDIA compiler
@@ -446,7 +452,13 @@ class Boost(Package):
             '--layout=%s' % layout
         ])
 
-        if not spec.satisfies('%intel'):
+        if not spec.satisfies('@:1.75 %intel'):
+            # When building any version >= 1.76, the toolset must be specified.
+            # Earlier versions could not specify Intel as the toolset
+            # as that was considered to be redundant/conflicting with
+            # --with-toolset in bootstrap.
+            # (although it is not currently known if 1.76 is the earliest
+            # version that requires specifying the toolset for Intel)
             options.extend([
                 'toolset=%s' % self.determine_toolset(spec)
             ])
@@ -468,7 +480,7 @@ class Boost(Package):
 
         # clang is not officially supported for pre-compiled headers
         # and at least in clang 3.9 still fails to build
-        #   http://www.boost.org/build/doc/html/bbv2/reference/precompiled_headers.html
+        #   https://www.boost.org/build/doc/html/bbv2/reference/precompiled_headers.html
         #   https://svn.boost.org/trac/boost/ticket/12496
         if (spec.satisfies('%apple-clang') or
                 spec.satisfies('%clang') or
