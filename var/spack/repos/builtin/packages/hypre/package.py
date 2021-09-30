@@ -17,8 +17,11 @@ class Hypre(Package, CudaPackage):
     homepage = "https://computing.llnl.gov/project/linear_solvers/software.php"
     url      = "https://github.com/hypre-space/hypre/archive/v2.14.0.tar.gz"
     git      = "https://github.com/hypre-space/hypre.git"
+    tags     = ['radiuss']
 
     maintainers = ['ulrikeyang', 'osborn9', 'balay']
+
+    tags = ['e4s']
 
     test_requires_compiler = True
 

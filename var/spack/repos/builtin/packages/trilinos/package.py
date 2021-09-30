@@ -33,6 +33,8 @@ class Trilinos(CMakePackage, CudaPackage):
 
     maintainers = ['keitat', 'sethrj', 'kuberry']
 
+    tags = ['e4s']
+
     # ###################### Versions ##########################
 
     version('master', branch='master')
@@ -65,7 +67,7 @@ class Trilinos(CMakePackage, CudaPackage):
     variant('explicit_template_instantiation', default=True, description='Enable explicit template instantiation (ETI)')
     variant('float', default=False, description='Enable single precision (float) numbers in Trilinos')
     variant('fortran', default=True, description='Compile with Fortran support')
-    variant('gotype', default='long',
+    variant('gotype', default='long_long',
             values=('int', 'long', 'long_long', 'all'),
             multi=False,
             description='global ordinal type for Tpetra')
