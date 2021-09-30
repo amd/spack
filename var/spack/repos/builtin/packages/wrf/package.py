@@ -134,7 +134,7 @@ class Wrf(Package):
     patch("patches/4.2/tirpc_detect.patch", when="@4.2")
     patch("patches/4.2/add_aarch64.patch", when="@4.2")
     patch("patches/4.2/configure_aocc_2.3.patch", when="@4.2 %aocc@:2.4.0")
-    patch("patches/4.2/configure_aocc_3.0.patch", when="@4.2 %aocc@3.0.0:3.2.0")
+    patch("patches/4.2/configure_aocc_3.0.patch", when="@4.2 %aocc@3.0.0:")
     patch("patches/4.2/hdf5_fix.patch", when="@4.2 %aocc")
     patch("patches/4.2/derf_fix.patch", when="@4.2 %aocc")
 
