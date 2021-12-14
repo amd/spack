@@ -78,8 +78,8 @@ on the mirror""")
         default=False, help="""Spack always check specs against configured
 binary mirrors when generating the pipeline, regardless of whether or not
 DAG pruning is enabled.  This flag controls whether it might attempt to
-fetch remote spec.yaml files directly (ensuring no spec is rebuilt if it is
-present on the mirror), or whether it should reduce pipeline generation time
+fetch remote spec files directly (ensuring no spec is rebuilt if it
+is present on the mirror), or whether it should reduce pipeline generation time
 by assuming all remote buildcache indices are up to date and only use those
 to determine whether a given spec is up to date on mirrors.  In the latter
 case, specs might be needlessly rebuilt if remote buildcache indices are out
@@ -397,8 +397,12 @@ def ci_rebuild(args):
             tty.debug('Getting {0} buildcache from {1}'.format(
                 job_spec_pkg_name, matching_mirror))
             tty.debug('Downloading to {0}'.format(build_cache_dir))
-            buildcache.download_buildcache_files(
-                job_spec, build_cache_dir, False, matching_mirror)
+            bindist.download_single_spec(
+                job_spec,
+                build_cache_dir,
+                require_cdashid=False,
+                mirror_url=matching_mirror
+            )
 
         # Now we are done and successful
         sys.exit(0)
@@ -553,8 +557,8 @@ def ci_rebuild(args):
         # per-PR mirror, if this is a PR pipeline
         if buildcache_mirror_url:
             spack_ci.push_mirror_contents(
-                env, job_spec, job_spec_yaml_path, buildcache_mirror_url,
-                sign_binaries)
+                env, job_spec_yaml_path, buildcache_mirror_url, sign_binaries
+            )
 
             if cdash_build_id:
                 tty.debug('Writing cdashid ({0}) to remote mirror: {1}'.format(
@@ -568,8 +572,8 @@ def ci_rebuild(args):
         # prefix is set)
         if pipeline_mirror_url:
             spack_ci.push_mirror_contents(
-                env, job_spec, job_spec_yaml_path, pipeline_mirror_url,
-                sign_binaries)
+                env, job_spec_yaml_path, pipeline_mirror_url, sign_binaries
+            )
 
             if cdash_build_id:
                 tty.debug('Writing cdashid ({0}) to remote mirror: {1}'.format(
