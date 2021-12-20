@@ -26,7 +26,7 @@ class Amdfftw(FftwBase):
 
     _name = 'amdfftw'
     homepage = "https://developer.amd.com/amd-aocl/fftw/"
-    url = "https://github.com/amd/amd-fftw/archive/3.1.tar.gz"
+    url = "https://github.com/amd/amd-fftw/archive/3.0.tar.gz"
     git = "https://github.com/amd/amd-fftw.git"
 
     maintainers = ['amd-toolchain-support']
@@ -78,15 +78,19 @@ class Amdfftw(FftwBase):
     conflicts(
         'precision=quad',
         when='@2.2 %aocc',
-        msg='AOCC clang version 2.2 is not supported for quad precision')
+        msg='Quad precision is not supported by AOCC clang version 2.2')
     conflicts(
         '+debug',
         when='@2.2 %aocc',
-        msg='AOCC clang version 2.2 is not supported for debug mode')
+        msg='debug mode is not supported by AOCC clang version 2.2')
     conflicts(
         '%gcc@:7.2',
         when='@2.2:',
         msg='GCC version above 7.2 is required for AMDFFTW')
+    conflicts(
+        '+amd-fast-planner ',
+        when='+mpi',
+        msg='mpi thread is not supported with amd-fast-planner')
     conflicts(
         '+amd-fast-planner',
         when='@2.2',
@@ -94,11 +98,11 @@ class Amdfftw(FftwBase):
     conflicts(
         '+amd-fast-planner',
         when='precision=quad',
-        msg='amd-fast-planner is not supported for quad precision')
+        msg='Quad precision is not supported with amd-fast-planner')
     conflicts(
         '+amd-fast-planner',
         when='precision=long_double',
-        msg='amd-fast-planner is not supported for long_double precision')
+        msg='long_double precision is not supported with amd-fast-planner')
     conflicts(
         '+amd-top-n-planner',
         when='@:3.0.0',
@@ -106,11 +110,11 @@ class Amdfftw(FftwBase):
     conflicts(
         '+amd-top-n-planner',
         when='precision=long_double',
-        msg='amd-top-n-planner is not supported for long_double precision')
+        msg='long_double precision is not supported with amd-top-n-planner')
     conflicts(
         '+amd-top-n-planner',
         when='precision=quad',
-        msg='amd-top-n-planner is not supported for quad precision')
+        msg='Quad precision is not supported with amd-top-n-planner')
     conflicts(
         '+amd-top-n-planner',
         when='+amd-fast-planner',
@@ -122,11 +126,11 @@ class Amdfftw(FftwBase):
     conflicts(
         '+amd-top-n-planner',
         when='+mpi',
-        msg='amd-top-n-planner is not supported for mpi thread')
+        msg='mpi thread is not supported with amd-top-n-planner')
     conflicts(
         '+amd-top-n-planner',
         when='+openmp',
-        msg='amd-top-n-planner is not supported for openmp thread')
+        msg='openmp thread is not supported with amd-top-n-planner')
     conflicts(
         '+amd-mpi-vader-limit',
         when='@:3.0.0',
@@ -134,7 +138,7 @@ class Amdfftw(FftwBase):
     conflicts(
         '+amd-mpi-vader-limit',
         when='precision=quad',
-        msg='amd-mpi-vader-limit is not supported for quad precision')
+        msg='Quad precision is not supported with amd-mpi-vader-limit')
     conflicts(
         '+amd-trans',
         when='+threads',
@@ -142,19 +146,19 @@ class Amdfftw(FftwBase):
     conflicts(
         '+amd-trans',
         when='+mpi',
-        msg='amd-trans is not supported for mpi thread')
+        msg='mpi thread is not supported with amd-trans')
     conflicts(
         '+amd-trans',
         when='+openmp',
-        msg='amd-trans is not supported for openmp thread')
+        msg='openmp thread is not supported with amd-trans')
     conflicts(
         '+amd-trans',
         when='precision=long_double',
-        msg='amd-trans is not supported for long_double precision')
+        msg='long_double precision is not supported with amd-trans')
     conflicts(
         '+amd-trans',
         when='precision=quad',
-        msg='amd-trans is not supported for quad precision')
+        msg='Quad precision is not supported with amd-trans')
     conflicts(
         '+amd-app-opt',
         when='@:3.0.1',
@@ -162,15 +166,15 @@ class Amdfftw(FftwBase):
     conflicts(
         '+amd-app-opt',
         when='+mpi',
-        msg='amd-app-opt is not supported for mpi thread')
+        msg='mpi thread is not supported with amd-app-opt')
     conflicts(
         '+amd-app-opt',
         when='precision=long_double',
-        msg='amd-app-opt is not supported for long_double precision')
+        msg='long_double precision is not supported with amd-app-opt')
     conflicts(
         '+amd-app-opt',
         when='precision=quad',
-        msg='amd-trans is not supported for quad precision')
+        msg='Quad precision is not supported with amd-app-opt')
 
     def configure(self, spec, prefix):
         """Configure function"""
@@ -186,23 +190,8 @@ class Amdfftw(FftwBase):
             options.append('FC={0}'.format(os.path.basename(spack_fc)))
             options.append('F77={0}'.format(os.path.basename(spack_fc)))
 
-        if '+shared' in spec:
-            options.append('--enable-shared')
-        else:
-            options.append('--disable-shared')
-
         if '+debug' in spec:
             options.append('--enable-debug')
-
-        if '+openmp' in spec:
-            options.append('--enable-openmp')
-        else:
-            options.append('--disable-openmp')
-
-        if '+threads' in spec:
-            options.append('--enable-threads')
-        else:
-            options.append('--disable-threads')
 
         if '+mpi' in spec:
             options.append('--enable-mpi')
@@ -211,35 +200,15 @@ class Amdfftw(FftwBase):
             options.append('--disable-mpi')
             options.append('--disable-amd-mpifft')
 
-        if '+amd-fast-planner' in spec:
-            options.append('--enable-amd-fast-planner')
-        else:
-            options.append('--disable-amd-fast-planner')
-
-        if '+amd-top-n-planner' in spec:
-            options.append('--enable-amd-top-n-planner')
-        else:
-            options.append('--disable-amd-top-n-planner')
-
-        if '+amd-mpi-vader-limit' in spec:
-            options.append('--enable-amd-mpi-vader-limit')
-        else:
-            options.append('--disable-amd-mpi-vader-limit')
-
-        if '+static' in spec:
-            options.append('--enable-static')
-        else:
-            options.append('--disable-static')
-
-        if '+amd-trans' in spec:
-            options.append('--enable-amd-trans')
-        else:
-            options.append('--disable-amd-trans')
-
-        if '+amd-app-opt' in spec:
-            options.append('--enable-amd-app-opt')
-        else:
-            options.append('--disable-amd-app-opt')
+        options.extend(self.enable_or_disable('shared'))
+        options.extend(self.enable_or_disable('openmp'))
+        options.extend(self.enable_or_disable('threads'))
+        options.extend(self.enable_or_disable('amd-fast-planner'))
+        options.extend(self.enable_or_disable('amd-top-n-planner'))
+        options.extend(self.enable_or_disable('amd-mpi-vader-limit'))
+        options.extend(self.enable_or_disable('static'))
+        options.extend(self.enable_or_disable('amd-trans'))
+        options.extend(self.enable_or_disable('amd-app-opt'))
 
         if not self.compiler.f77 or not self.compiler.fc:
             options.append('--disable-fortran')
