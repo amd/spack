@@ -118,8 +118,8 @@ class Conduit(CMakePackage):
     #
     # Use HDF5 1.8, for wider output compatibly
     # variants reflect we are not using hdf5's mpi or fortran features.
-    depends_on("hdf5@1.8.19:1.8.999~cxx", when="+hdf5+hdf5_compat+shared")
-    depends_on("hdf5@1.8.19:1.8.999~shared~cxx", when="+hdf5+hdf5_compat~shared")
+    depends_on("hdf5@1.8.19:1.8~cxx", when="+hdf5+hdf5_compat+shared")
+    depends_on("hdf5@1.8.19:1.8~shared~cxx", when="+hdf5+hdf5_compat~shared")
     depends_on("hdf5~cxx", when="+hdf5~hdf5_compat+shared")
     depends_on("hdf5~shared~cxx", when="+hdf5~hdf5_compat~shared")
     # we need to hand this to conduit so it can properly
@@ -170,6 +170,11 @@ class Conduit(CMakePackage):
     # Tentative patch for fj compiler
     # Cmake will support fj compiler and this patch will be removed
     patch('fj_flags.patch', when='%fj')
+
+    # Add missing include for numeric_limits
+    # https://github.com/LLNL/conduit/pull/773
+    patch('https://github.com/LLNL/conduit/pull/773.patch', when='@:0.7.2',
+          sha256='89d1829ad52f503f6179e43efddf998c239a95c14ca1f248463a3f61ad7d5cf7')
 
     ###################################
     # build phases used by this package

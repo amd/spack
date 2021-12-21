@@ -74,6 +74,14 @@ class Legion(CMakePackage):
             description="The network communications/transport layer to use.",
             multi=False)
 
+    # Add Gasnet tarball dependency in spack managed manner
+    # TODO: Provide less mutable tag instead of branch
+    resource(name='stanfordgasnet',
+             git='https://github.com/StanfordLegion/gasnet.git',
+             destination='stanfordgasnet',
+             branch='master',
+             when='network=gasnet')
+
     # We default to automatically embedding a gasnet build. To override this
     # point the package a pre-installed version of GASNet-Ex via the gasnet_root
     # variant.
@@ -190,9 +198,6 @@ class Legion(CMakePackage):
     variant('max_fields', values=int, default=512,
             description="Maximum number of fields allowed in a logical region.")
 
-    variant('native', default=False,
-            description="Enable native/host processor optimizaton target.")
-
     def cmake_args(self):
         spec = self.spec
         cmake_cxx_flags = []
@@ -204,7 +209,11 @@ class Legion(CMakePackage):
                 gasnet_dir = spec.variants['gasnet_root'].value
                 options.append('-DGASNet_ROOT_DIR=%s' % gasnet_dir)
             else:
+                gasnet_dir = join_path(self.stage.source_path,
+                                       "stanfordgasnet",
+                                       "gasnet")
                 options.append('-DLegion_EMBED_GASNet=ON')
+                options.append('-DLegion_EMBED_GASNet_LOCALSRC=%s' % gasnet_dir)
 
             gasnet_conduit = spec.variants['conduit'].value
             options.append('-DGASNet_CONDUIT=%s' % gasnet_conduit)
@@ -327,10 +336,9 @@ class Legion(CMakePackage):
             maxfields = maxfields << 1
         options.append('-DLegion_MAX_FIELDS=%d' % maxfields)
 
-        if '+native' in spec:
-            # default is off.
-            options.append('-DBUILD_MARCH:STRING=native')
-
+        # This disables Legion's CMake build system's logic for targeting the native
+        # CPU architecture in favor of Spack-provided compiler flags
+        options.append('-DBUILD_MARCH:STRING=')
         return options
 
     @run_after('install')
