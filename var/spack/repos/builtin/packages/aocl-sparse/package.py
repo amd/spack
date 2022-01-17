@@ -1,4 +1,4 @@
-# Copyright 2013-2021 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2022 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -15,7 +15,7 @@ class AoclSparse(CMakePackage):
     library supports SPMV function with CSR and ELLPACK formats."""
 
     homepage = "https://developer.amd.com/amd-aocl/aocl-sparse/"
-    url = "https://github.com/amd/aocl-sparse/archive/3.0.tar.gz"
+    url = "https://github.com/amd/aocl-sparse/archive/3.1.tar.gz"
     git = "https://github.com/amd/aocl-sparse.git"
 
     maintainers = ['amd-toolchain-support']
