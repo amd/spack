@@ -5,7 +5,7 @@
 
 import os
 
-from spack import *
+from spack.package import *
 
 
 class Hydrogen(CMakePackage, CudaPackage, ROCmPackage):
@@ -15,6 +15,7 @@ class Hydrogen(CMakePackage, CudaPackage, ROCmPackage):
     homepage = "https://libelemental.org"
     url      = "https://github.com/LLNL/Elemental/archive/v1.0.1.tar.gz"
     git      = "https://github.com/LLNL/Elemental.git"
+    tags     = ['ecp', 'radiuss']
 
     maintainers = ['bvanessen']
 
@@ -69,6 +70,8 @@ class Hydrogen(CMakePackage, CudaPackage, ROCmPackage):
 
     depends_on('cmake@3.21.0:', type='build', when='@1.5.2:')
     depends_on('cmake@3.17.0:', type='build', when='@:1.5.1')
+    depends_on('cmake@3.22.0:', type='build', when='%cce')
+
     depends_on('mpi')
     depends_on('hwloc@1.11:')
     depends_on('hwloc +cuda +nvml', when='+cuda')
@@ -147,7 +150,6 @@ class Hydrogen(CMakePackage, CudaPackage, ROCmPackage):
 
         args = [
             '-DCMAKE_CXX_STANDARD=17',
-            '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON',
             '-DCMAKE_INSTALL_MESSAGE:STRING=LAZY',
             '-DBUILD_SHARED_LIBS:BOOL=%s'      % ('+shared' in spec),
             '-DHydrogen_ENABLE_OPENMP:BOOL=%s'       % ('+openmp' in spec),
@@ -165,6 +167,11 @@ class Hydrogen(CMakePackage, CudaPackage, ROCmPackage):
             '-DHydrogen_ENABLE_GPU_FP16=%s' % enable_gpu_fp16,
         ]
 
+        if not spec.satisfies('^cmake@3.23.0'):
+            # There is a bug with using Ninja generator in this version
+            # of CMake
+            args.append('-DCMAKE_EXPORT_COMPILE_COMMANDS=ON')
+
         if '+cuda' in spec:
             if self.spec.satisfies('%clang'):
                 for flag in self.spec.compiler_flags['cxxflags']:
@@ -175,6 +182,10 @@ class Hydrogen(CMakePackage, CudaPackage, ROCmPackage):
             if archs != 'none':
                 arch_str = ";".join(archs)
                 args.append('-DCMAKE_CUDA_ARCHITECTURES=%s' % arch_str)
+
+            if (spec.satisfies('%cce') and
+                spec.satisfies('^cuda+allow-unsupported-compilers')):
+                args.append('-DCMAKE_CUDA_FLAGS=-allow-unsupported-compiler')
 
         if '+rocm' in spec:
             args.extend([
@@ -190,6 +201,11 @@ class Hydrogen(CMakePackage, CudaPackage, ROCmPackage):
                     ' -g -fsized-deallocation -fPIC {1}'
                     ' -std=c++17'.format(arch_str, cxxflags_str)
                 )
+                args.extend([
+                    '-DCMAKE_HIP_ARCHITECTURES=%s' % arch_str,
+                    '-DAMDGPU_TARGETS=%s' % arch_str,
+                    '-DGPU_TARGETS=%s' % arch_str,
+                ])
 
         # Add support for OS X to find OpenMP (LLVM installed via brew)
         if self.spec.satisfies('%clang +openmp platform=darwin'):

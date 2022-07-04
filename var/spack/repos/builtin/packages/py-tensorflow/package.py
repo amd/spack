@@ -6,6 +6,8 @@
 import sys
 import tempfile
 
+from spack.package import *
+
 
 class PyTensorflow(Package, CudaPackage):
     """TensorFlow is an Open Source Software Library for Machine Intelligence
@@ -215,6 +217,10 @@ class PyTensorflow(Package, CudaPackage):
     depends_on('py-protobuf@3.0.0a3', type=('build', 'run'), when='@0.6:0.7.0')
     depends_on('protobuf@:3.12', when='@:2.4')
     depends_on('protobuf@:3.17')
+    # https://github.com/protocolbuffers/protobuf/issues/10051
+    # https://github.com/tensorflow/tensorflow/issues/56266
+    depends_on('py-protobuf@:3', when='@:2.7.2', type=('build', 'run'))
+    depends_on('protobuf@:3', when='@:2.7.2', type=('build', 'run'))
     depends_on('flatbuffers+python@1.12:2', type=('build', 'run'), when='@2.7:')
     depends_on('flatbuffers+python@1.12', type=('build', 'run'), when='@2.4:2.6')
 
@@ -330,8 +336,8 @@ class PyTensorflow(Package, CudaPackage):
     patch('1-1_fcc_tf_patch.patch', when='@2.1.0:2.1%fj')
 
     # do not import contrib.cloud if not available
-    patch('https://github.com/tensorflow/tensorflow/commit/ed62ac8203999513dfae03498e871ea35eb60cc4.patch',
-          sha256='c37d14622a86b164e2411ea45a04f756ac61b2044d251f19ab17733c508e5305', when='@1.14.0')
+    patch('https://github.com/tensorflow/tensorflow/commit/ed62ac8203999513dfae03498e871ea35eb60cc4.patch?full_index=1',
+          sha256='ff02e249532a5661b123108734a39534992d81da90f0c8187bf4e151a865effc', when='@1.14.0')
     # import_contrib_cloud patch for older versions
     patch('contrib_cloud_1.10.patch', when='@1.10:1.13')
     patch('contrib_cloud_1.9.patch', when='@1.9')

@@ -6,11 +6,12 @@
 import os.path
 import sys
 from datetime import datetime, timedelta
+from textwrap import dedent
 
 import pytest
 
 import llnl.util.lang
-from llnl.util.lang import match_predicate, memoized, pretty_date, stable_args
+from llnl.util.lang import dedupe, match_predicate, memoized, pretty_date, stable_args
 
 
 @pytest.fixture()
@@ -265,3 +266,42 @@ def test_memoized_unhashable(args, kwargs):
     key = stable_args(*args, **kwargs)
     assert str(key) in exc_msg
     assert "function 'f'" in exc_msg
+
+
+def test_dedupe():
+    assert [x for x in dedupe([1, 2, 1, 3, 2])] == [1, 2, 3]
+    assert [x for x in dedupe([1, -2, 1, 3, 2], key=abs)] == [1, -2, 3]
+
+
+def test_grouped_exception():
+    h = llnl.util.lang.GroupedExceptionHandler()
+
+    def inner():
+        raise ValueError('wow!')
+
+    with h.forward('inner method'):
+        inner()
+
+    with h.forward('top-level'):
+        raise TypeError('ok')
+
+    assert h.grouped_message(with_tracebacks=False) == dedent("""\
+    due to the following failures:
+    inner method raised ValueError: wow!
+    top-level raised TypeError: ok""")
+
+    assert h.grouped_message(with_tracebacks=True) == dedent("""\
+    due to the following failures:
+    inner method raised ValueError: wow!
+      File "{0}", \
+line 283, in test_grouped_exception
+        inner()
+      File "{0}", \
+line 280, in inner
+        raise ValueError('wow!')
+
+    top-level raised TypeError: ok
+      File "{0}", \
+line 286, in test_grouped_exception
+        raise TypeError('ok')
+    """).format(__file__)

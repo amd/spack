@@ -6,7 +6,7 @@
 import os
 import sys
 
-from spack import *
+from spack.package import *
 
 
 class Lbann(CMakePackage, CudaPackage, ROCmPackage):
@@ -18,7 +18,7 @@ class Lbann(CMakePackage, CudaPackage, ROCmPackage):
     homepage = "https://software.llnl.gov/lbann/"
     url      = "https://github.com/LLNL/lbann/archive/v0.91.tar.gz"
     git      = "https://github.com/LLNL/lbann.git"
-    tags     = ['radiuss']
+    tags     = ['ecp', 'radiuss']
 
     maintainers = ['bvanessen']
 
@@ -103,8 +103,8 @@ class Lbann(CMakePackage, CudaPackage, ROCmPackage):
     conflicts('+gold', when='platform=darwin', msg="gold does not work on Darwin")
     conflicts('+lld', when='platform=darwin', msg="lld does not work on Darwin")
 
-    depends_on('cmake@3.21.0: ~doc', type='build', when='@0.103:')
-    depends_on('cmake@3.17.0: ~doc', type='build', when='@:0.102')
+    depends_on('cmake@3.17.0:', type='build')
+    depends_on('cmake@3.21.0:', type='build', when='@0.103:')
 
     # Specify the correct versions of Hydrogen
     depends_on('hydrogen@:1.3.4', when='@0.95:0.100')
@@ -172,6 +172,7 @@ class Lbann(CMakePackage, CudaPackage, ROCmPackage):
     depends_on('cudnn', when='@0.90:0.100 +cuda')
     depends_on('cudnn@8.0.2:', when='@:0.90,0.101: +cuda')
     depends_on('cub', when='@0.94:0.98.2 +cuda ^cuda@:10')
+    depends_on('cutensor', when='@:0.90,0.102: +cuda')
     depends_on('hipcub', when='+rocm')
     depends_on('mpi')
     depends_on('hwloc@1.11:', when='@:0.90,0.102: +hwloc')
@@ -220,8 +221,10 @@ class Lbann(CMakePackage, CudaPackage, ROCmPackage):
 
     depends_on('protobuf+shared@3.10.0', when='@:0.90,0.99:')
 
-    depends_on('cereal')
-    depends_on('catch2', type=('build', 'test'))
+    # using cereal@1.3.1 and above requires changing the
+    # find_package call to lowercase, so stick with :1.3.0
+    depends_on('cereal@:1.3.0')
+    depends_on('catch2@2.9.0:2.99.999', type=('build', 'test'))
     depends_on('clara')
 
     depends_on('llvm-openmp', when='%apple-clang')
@@ -287,7 +290,6 @@ class Lbann(CMakePackage, CudaPackage, ROCmPackage):
         args = self.common_config_args
         args.extend([
             '-DCMAKE_CXX_STANDARD=17',
-            '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON',
             '-DLBANN_WITH_CNPY=%s' % ('+numpy' in spec),
             '-DLBANN_DETERMINISTIC:BOOL=%s' % ('+deterministic' in spec),
             '-DLBANN_WITH_HWLOC=%s' % ('+hwloc' in spec),
@@ -311,6 +313,11 @@ class Lbann(CMakePackage, CudaPackage, ROCmPackage):
             '-DProtobuf_DIR={0}'.format(spec['protobuf'].prefix),
             '-Dprotobuf_MODULE_COMPATIBLE=ON'])
 
+        if not spec.satisfies('^cmake@3.23.0'):
+            # There is a bug with using Ninja generator in this version
+            # of CMake
+            args.append('-DCMAKE_EXPORT_COMPILE_COMMANDS=ON')
+
         if '+cuda' in spec:
             if self.spec.satisfies('%clang'):
                 for flag in self.spec.compiler_flags['cxxflags']:
@@ -324,6 +331,10 @@ class Lbann(CMakePackage, CudaPackage, ROCmPackage):
             if archs != 'none':
                 arch_str = ";".join(archs)
                 args.append('-DCMAKE_CUDA_ARCHITECTURES=%s' % arch_str)
+
+            if (spec.satisfies('%cce') and
+                spec.satisfies('^cuda+allow-unsupported-compilers')):
+                args.append('-DCMAKE_CUDA_FLAGS=-allow-unsupported-compiler')
 
         if spec.satisfies('@:0.90') or spec.satisfies('@0.95:'):
             args.append(
@@ -401,6 +412,11 @@ class Lbann(CMakePackage, CudaPackage, ROCmPackage):
                     ' -g -fsized-deallocation -fPIC -std=c++17 {1}'.format(
                         arch_str, cxxflags_str)
                 )
+                args.extend([
+                    '-DCMAKE_HIP_ARCHITECTURES=%s' % arch_str,
+                    '-DAMDGPU_TARGETS=%s' % arch_str,
+                    '-DGPU_TARGETS=%s' % arch_str,
+                ])
 
         # IF IBM ESSL is used it needs help finding the proper LAPACK libraries
         if self.spec.satisfies('^essl'):
