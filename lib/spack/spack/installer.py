@@ -232,6 +232,7 @@ def _packages_needed_to_bootstrap_compiler(compiler, architecture, pkgs):
         )
     packages = [(s.package, False) for
                 s in dep.traverse(order='post', root=False)]
+
     packages.append((dep.package, True))
     return packages
 
@@ -2211,7 +2212,8 @@ class BuildTask(object):
     @property
     def explicit(self):
         """The package was explicitly requested by the user."""
-        return self.pkg == self.request.pkg
+        return self.pkg == self.request.pkg and \
+            self.request.install_args.get('explicit', True)
 
     @property
     def key(self):
