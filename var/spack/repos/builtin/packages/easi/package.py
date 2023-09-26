@@ -1,4 +1,4 @@
-# Copyright 2013-2021 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2023 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -14,11 +14,11 @@ class Easi(CMakePackage):
     homepage = "https://easyinit.readthedocs.io"
     git = "https://github.com/SeisSol/easi.git"
 
-    maintainers = ["ravil-mobile", "Thomas-Ulrich", "krenzland", "ThrudPrimrose"]
+    maintainers("ravil-mobile", "Thomas-Ulrich", "krenzland", "ThrudPrimrose")
 
     version("develop", branch="master")
-    version("1.2.0", tag="v1.2.0")
-    version("1.1.2", tag="v1.1.2")
+    version("1.2.0", tag="v1.2.0", commit="305a119338116a0ceac6b68b36841a50250d05b1")
+    version("1.1.2", tag="v1.1.2", commit="4c87ef3b3dca9415d116ef102cb8de750ef7e1a0")
 
     variant("asagi", default=True, description="build with ASAGI support")
     variant(
@@ -45,7 +45,6 @@ class Easi(CMakePackage):
     conflicts("jit=impalajit", when="target=riscv64:")
 
     def cmake_args(self):
-
         args = []
         args.append(self.define_from_variant("ASAGI", "asagi"))
         spec = self.spec

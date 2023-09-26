@@ -1,10 +1,9 @@
-# Copyright 2013-2022 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2023 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 import sys
 
-from spack.build_environment import MakeExecutable, determine_number_of_jobs
 from spack.package import *
 from spack.util.executable import which_string
 
@@ -19,7 +18,7 @@ class Ninja(Package):
     url = "https://github.com/ninja-build/ninja/archive/v1.7.2.tar.gz"
     git = "https://github.com/ninja-build/ninja.git"
 
-    tags = ["build-tools", "e4s"]
+    tags = ["build-tools", "e4s", "windows"]
 
     executables = ["^ninja$"]
 

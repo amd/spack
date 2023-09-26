@@ -1,4 +1,4 @@
-# Copyright 2013-2022 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2023 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -22,8 +22,8 @@ class Clingo(CMakePackage):
     homepage = "https://potassco.org/clingo/"
     url = "https://github.com/potassco/clingo/archive/v5.2.2.tar.gz"
     git = "https://github.com/potassco/clingo.git"
-
-    maintainers = ["tgamblin", "alalazo"]
+    tags = ["windows"]
+    maintainers("tgamblin", "alalazo")
 
     version("master", branch="master", submodules=True)
     version("spack", commit="2a025667090d71b2c9dce60fe924feb6bde8f667", submodules=True)
@@ -119,6 +119,11 @@ class Clingo(CMakePackage):
                 args += self.cmake_python_hints
         else:
             args += ["-DCLINGO_BUILD_WITH_PYTHON=OFF"]
+
+        # Use LTO also for non-Intel compilers please. This can be removed when they
+        # bump cmake_minimum_required to VERSION 3.9.
+        if "+ipo" in self.spec:
+            args.append("-DCMAKE_POLICY_DEFAULT_CMP0069=NEW")
 
         return args
 

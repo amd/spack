@@ -1,4 +1,4 @@
-# Copyright 2013-2022 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2023 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -22,7 +22,7 @@ class Libproxy(CMakePackage):
     variant("perl", default=False, description="Enable Perl bindings")
     variant("python", default=False, description="Enable Python bindings", when="@0.4.16:")
 
-    depends_on("zlib")
+    depends_on("zlib-api")
     depends_on("perl", type=("build", "run"), when="+perl")
 
     extends("python@:3.8", when="+python")

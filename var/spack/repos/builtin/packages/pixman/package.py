@@ -1,4 +1,4 @@
-# Copyright 2013-2022 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2023 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -25,6 +25,8 @@ class Pixman(AutotoolsPackage):
     version("0.32.6", sha256="3dfed13b8060eadabf0a4945c7045b7793cc7e3e910e748a8bb0f0dc3e794904")
 
     depends_on("pkgconfig", type="build")
+    depends_on("flex", type="build")
+    depends_on("bison@3:", type="build")
     depends_on("libpng")
 
     # As discussed here:
@@ -59,12 +61,15 @@ class Pixman(AutotoolsPackage):
         return find_libraries("libpixman-1", self.prefix, shared=True, recursive=True)
 
     def configure_args(self):
-        args = [
-            "--enable-libpng",
-            "--disable-gtk",
-        ]
+        args = ["--enable-libpng", "--disable-gtk"]
 
         if sys.platform == "darwin":
-            args.append("--disable-mmx")
+            args += ["--disable-mmx", "--disable-silent-rules"]
+
+            # From homebrew, see:
+            #  https://gitlab.freedesktop.org/pixman/pixman/-/issues/59
+            #  https://gitlab.freedesktop.org/pixman/pixman/-/issues/69
+            if self.spec.target.family == "aarch64":
+                args.append("--disable-arm-a64-neon")
 
         return args

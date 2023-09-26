@@ -1,11 +1,10 @@
-# Copyright 2013-2022 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2023 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
-from __future__ import print_function
-
 import os.path
 import shutil
+import sys
 import tempfile
 
 import llnl.util.filesystem
@@ -43,6 +42,8 @@ BINARY_METADATA = {
         "The sha256 checksum of binaries is checked before installation."
     ),
     "info": {
+        # This is a mis-nomer since it's not a URL; but file urls cannot
+        # represent relative paths, so we have to live with it for now.
         "url": os.path.join("..", "..", LOCAL_MIRROR_DIR),
         "homepage": "https://github.com/spack/spack-bootstrap-mirrors",
         "releases": "https://github.com/spack/spack-bootstrap-mirrors/releases",
@@ -58,17 +59,20 @@ PATCHELF_JSON = "$spack/share/spack/bootstrap/github-actions-v0.4/patchelf.json"
 SOURCE_METADATA = {
     "type": "install",
     "description": "Mirror with software needed to bootstrap Spack",
-    "info": {"url": os.path.join("..", "..", LOCAL_MIRROR_DIR)},
+    "info": {
+        # This is a mis-nomer since it's not a URL; but file urls cannot
+        # represent relative paths, so we have to live with it for now.
+        "url": os.path.join("..", "..", LOCAL_MIRROR_DIR)
+    },
 }
 
 
 def _add_scope_option(parser):
     scopes = spack.config.scopes()
-    scopes_metavar = spack.config.scopes_metavar
     parser.add_argument(
         "--scope",
         choices=scopes,
-        metavar=scopes_metavar,
+        metavar=spack.config.SCOPES_METAVAR,
         help="configuration scope to read/modify",
     )
 
@@ -165,7 +169,7 @@ def _reset(args):
         if not ok_to_continue:
             raise RuntimeError("Aborting")
 
-    for scope in spack.config.config.file_scopes:
+    for scope in spack.config.CONFIG.file_scopes:
         # The default scope should stay untouched
         if scope.name == "defaults":
             continue
@@ -182,7 +186,7 @@ def _reset(args):
         if os.path.exists(bootstrap_yaml):
             shutil.move(bootstrap_yaml, backup_file)
 
-        spack.config.config.clear_caches()
+        spack.config.CONFIG.clear_caches()
 
 
 def _root(args):
@@ -322,6 +326,7 @@ def _status(args):
     if missing:
         print(llnl.util.tty.color.colorize(legend))
         print()
+        sys.exit(1)
 
 
 def _add(args):

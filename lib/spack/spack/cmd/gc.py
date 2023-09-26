@@ -1,4 +1,4 @@
-# Copyright 2013-2022 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2023 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -20,7 +20,7 @@ def setup_parser(subparser):
 
 
 def gc(parser, args):
-    specs = spack.store.db.unused_specs
+    specs = spack.store.STORE.db.unused_specs
 
     # Restrict garbage collection to the active environment
     # speculating over roots that are yet to be installed

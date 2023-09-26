@@ -1,4 +1,4 @@
-# Copyright 2013-2022 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2023 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -24,9 +24,12 @@ class Boost(Package):
     git = "https://github.com/boostorg/boost.git"
     list_url = "https://sourceforge.net/projects/boost/files/boost/"
     list_depth = 1
-    maintainers = ["hainest"]
+    maintainers("hainest")
 
     version("develop", branch="develop", submodules=True)
+    version("1.83.0", sha256="6478edfe2f3305127cffe8caf73ea0176c53769f4bf1585be237eb30798c3b8e")
+    version("1.82.0", sha256="a6e1ab9b0860e6a2881dd7b21fe9f737a095e5f33a3a874afc6a345228597ee6")
+    version("1.81.0", sha256="71feeed900fbccca04a3b4f2f84a7c217186f28a940ed8b7ed4725986baf99fa")
     version("1.80.0", sha256="1e19565d82e43bc59209a168f5ac899d3ba471d55c7610c677d4ccf2c9c500c0")
     version("1.79.0", sha256="475d589d51a7f8b3ba2ba4eda022b170e562ca3b760ee922c146b6c65856ef39")
     version("1.78.0", sha256="8681f175d4bdb26c52222665793eef08490d7758529330f98d3b29dd0735bccc")
@@ -173,8 +176,11 @@ class Boost(Package):
             "14",
             # C++17 is not supported by Boost < 1.63.0.
             conditional("17", when="@1.63.0:"),
-            # C++20/2a is not support by Boost < 1.73.0
+            # C++20/2a is not supported by Boost < 1.73.0
             conditional("2a", when="@1.73.0:"),
+            conditional("20", when="@1.77.0:"),
+            conditional("23", when="@1.79.0:"),
+            conditional("26", when="@1.79.0:"),
         ),
         multi=False,
         description="Use the specified C++ standard when building.",
@@ -227,7 +233,7 @@ class Boost(Package):
 
     depends_on("mpi", when="+mpi")
     depends_on("bzip2", when="+iostreams")
-    depends_on("zlib", when="+iostreams")
+    depends_on("zlib-api", when="+iostreams")
     depends_on("zstd", when="+iostreams")
     depends_on("xz", when="+iostreams")
     depends_on("py-numpy", when="+numpy", type=("build", "run"))
@@ -395,6 +401,16 @@ class Boost(Package):
     # https://www.intel.com/content/www/us/en/developer/articles/technical/building-boost-with-oneapi.html
     patch("intel-oneapi-linux-jam.patch", when="@1.76: %oneapi")
 
+    # https://github.com/boostorg/phoenix/issues/111
+    patch("boost_phoenix_1.81.0.patch", level=2, when="@1.81.0:1.82.0")
+
+    # https://github.com/boostorg/filesystem/issues/284
+    patch(
+        "https://www.boost.org/patches/1_82_0/0002-filesystem-fix-win-smbv1-dir-iterator.patch",
+        sha256="738ba8e0d7b5cdcf5fae4998f9450b51577bbde1bb0d220a0721551609714ca4",
+        when="@1.82.0 platform=windows",
+    )
+
     def patch(self):
         # Disable SSSE3 and AVX2 when using the NVIDIA compiler
         if self.spec.satisfies("%nvhpc"):
@@ -417,6 +433,12 @@ class Boost(Package):
             url = "http://downloads.sourceforge.net/project/boost/boost/{0}/boost_{1}.tar.bz2"
 
         return url.format(version.dotted, version.underscored)
+
+    def flag_handler(self, name, flags):
+        if name == "cxxflags":
+            if self.spec.satisfies("@1.79.0 %oneapi"):
+                flags.append("-Wno-error=enum-constexpr-conversion")
+        return (flags, None, None)
 
     def determine_toolset(self, spec):
         toolsets = {
@@ -514,9 +536,9 @@ class Boost(Package):
                     "-s",
                     "BZIP2_LIBPATH=%s" % spec["bzip2"].prefix.lib,
                     "-s",
-                    "ZLIB_INCLUDE=%s" % spec["zlib"].prefix.include,
+                    "ZLIB_INCLUDE=%s" % spec["zlib-api"].prefix.include,
                     "-s",
-                    "ZLIB_LIBPATH=%s" % spec["zlib"].prefix.lib,
+                    "ZLIB_LIBPATH=%s" % spec["zlib-api"].prefix.lib,
                     "-s",
                     "LZMA_INCLUDE=%s" % spec["xz"].prefix.include,
                     "-s",
@@ -723,14 +745,13 @@ class Boost(Package):
         # Disable find package's config mode for versions of Boost that
         # didn't provide it. See https://github.com/spack/spack/issues/20169
         # and https://cmake.org/cmake/help/latest/module/FindBoost.html
-        is_cmake = isinstance(dependent_spec.package, CMakePackage)
-        if self.spec.satisfies("boost@:1.69.0") and is_cmake:
-            args_fn = type(dependent_spec.package).cmake_args
+        if self.spec.satisfies("boost@:1.69.0") and dependent_spec.satisfies("build_system=cmake"):
+            args_fn = type(dependent_spec.package.builder).cmake_args
 
             def _cmake_args(self):
                 return ["-DBoost_NO_BOOST_CMAKE=ON"] + args_fn(self)
 
-            type(dependent_spec.package).cmake_args = _cmake_args
+            type(dependent_spec.package.builder).cmake_args = _cmake_args
 
     def setup_dependent_build_environment(self, env, dependent_spec):
         if "+context" in self.spec and "context-impl" in self.spec.variants:

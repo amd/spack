@@ -1,4 +1,4 @@
-# Copyright 2013-2022 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2023 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -38,7 +38,7 @@ def _cross_provider_maps(lmap, rmap):
     return result
 
 
-class _IndexBase(object):
+class _IndexBase:
     #: This is a dict of dicts used for finding providers of particular
     #: virtual dependencies. The dict of dicts looks like:
     #:
@@ -72,7 +72,7 @@ class _IndexBase(object):
         # Add all the providers that satisfy the vpkg spec.
         if virtual_spec.name in self.providers:
             for p_spec, spec_set in self.providers[virtual_spec.name].items():
-                if p_spec.satisfies(virtual_spec, deps=False):
+                if p_spec.intersects(virtual_spec, deps=False):
                     result.update(spec_set)
 
         # Return providers in order. Defensively copy.
@@ -186,7 +186,7 @@ class ProviderIndex(_IndexBase):
                 provider_spec = provider_spec_readonly.copy()
                 provider_spec.compiler_flags = spec.compiler_flags.copy()
 
-                if spec.satisfies(provider_spec, deps=False):
+                if spec.intersects(provider_spec, deps=False):
                     provided_name = provided_spec.name
 
                     provider_map = self.providers.setdefault(provided_name, {})
@@ -292,8 +292,8 @@ class ProviderIndex(_IndexBase):
         index.providers = _transform(
             providers,
             lambda vpkg, plist: (
-                spack.spec.Spec.from_node_dict(vpkg),
-                set(spack.spec.Spec.from_node_dict(p) for p in plist),
+                spack.spec.SpecfileV4.from_node_dict(vpkg),
+                set(spack.spec.SpecfileV4.from_node_dict(p) for p in plist),
             ),
         )
         return index

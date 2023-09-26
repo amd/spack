@@ -1,4 +1,4 @@
-# Copyright 2013-2022 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2023 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -75,7 +75,7 @@ class Magics(CMakePackage):
     # that files that make calls to png library get compiled and linked
     # unconditionally, which makes png a non-optional dependency (and
     # ENABLE_PNG always has to be set to ON).
-    depends_on("zlib")
+    depends_on("zlib-api")
     depends_on("libpng")
 
     # GRIB support is non-optional, regardless of what the instruction says.

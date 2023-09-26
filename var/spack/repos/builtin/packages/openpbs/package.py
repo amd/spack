@@ -1,4 +1,4 @@
-# Copyright 2013-2022 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2023 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -45,7 +45,7 @@ class Openpbs(AutotoolsPackage):
     depends_on("swig")
     depends_on("tcl")
     depends_on("tk")
-    depends_on("zlib")
+    depends_on("zlib-api")
 
     # The configure script cannot properly handle dependencies in non-system
     # directories.
@@ -84,7 +84,7 @@ class Openpbs(AutotoolsPackage):
             # The argument --with-tk is introduced with with_lib.patch
             "--with-tk=%s" % self.spec["tk"].prefix,
             "--with-xauth=xauth",
-            "--with-libz=%s" % self.spec["zlib"].prefix,
+            "--with-libz=%s" % self.spec["zlib-api"].prefix,
         ]
 
     @run_after("install")

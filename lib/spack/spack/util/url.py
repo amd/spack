@@ -1,4 +1,4 @@
-# Copyright 2013-2022 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2023 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -10,12 +10,11 @@ Utility functions for parsing, formatting, and manipulating URLs.
 import itertools
 import os
 import posixpath
-import re
 import sys
 import urllib.parse
 import urllib.request
 
-from spack.util.path import convert_to_posix_path
+from spack.util.path import convert_to_posix_path, sanitize_filename
 
 
 def validate_scheme(scheme):
@@ -69,6 +68,20 @@ def path_to_file_url(path):
 
 def file_url_string_to_path(url):
     return urllib.request.url2pathname(urllib.parse.urlparse(url).path)
+
+
+def is_path_instead_of_url(path_or_url):
+    """Historically some config files and spack commands used paths
+    where urls should be used. This utility can be used to validate
+    and promote paths to urls."""
+    scheme = urllib.parse.urlparse(path_or_url).scheme
+
+    # On non-Windows, no scheme means it's likely a path
+    if not sys.platform == "win32":
+        return not scheme
+
+    # On Windows, we may have drive letters.
+    return "A" <= scheme <= "Z"
 
 
 def format(parsed_url):
@@ -133,11 +146,7 @@ def join(base_url, path, *extra, **kwargs):
     last_abs_component = None
     scheme = ""
     for i in range(n - 1, -1, -1):
-        obj = urllib.parse.urlparse(
-            paths[i],
-            scheme="",
-            allow_fragments=False,
-        )
+        obj = urllib.parse.urlparse(paths[i], scheme="", allow_fragments=False)
 
         scheme = obj.scheme
 
@@ -147,11 +156,7 @@ def join(base_url, path, *extra, **kwargs):
                 # Without a scheme, we have to go back looking for the
                 # next-last component that specifies a scheme.
                 for j in range(i - 1, -1, -1):
-                    obj = urllib.parse.urlparse(
-                        paths[j],
-                        scheme="",
-                        allow_fragments=False,
-                    )
+                    obj = urllib.parse.urlparse(paths[j], scheme="", allow_fragments=False)
 
                     if obj.scheme:
                         paths[i] = "{SM}://{NL}{PATH}".format(
@@ -167,11 +172,7 @@ def join(base_url, path, *extra, **kwargs):
     if last_abs_component is not None:
         paths = paths[last_abs_component:]
         if len(paths) == 1:
-            result = urllib.parse.urlparse(
-                paths[0],
-                scheme="file",
-                allow_fragments=False,
-            )
+            result = urllib.parse.urlparse(paths[0], scheme="file", allow_fragments=False)
 
             # another subtlety: If the last argument to join() is an absolute
             # file:// URL component with a relative path, the relative path
@@ -236,64 +237,25 @@ def _join(base_url, path, *extra, **kwargs):
 
     return format(
         urllib.parse.ParseResult(
-            scheme=scheme,
-            netloc=netloc,
-            path=base_path,
-            params=params,
-            query=query,
-            fragment=None,
+            scheme=scheme, netloc=netloc, path=base_path, params=params, query=query, fragment=None
         )
     )
 
 
-git_re = (
-    r"^(?:([a-z]+)://)?"  # 1. optional scheme
-    r"(?:([^@]+)@)?"  # 2. optional user
-    r"([^:/~]+)?"  # 3. optional hostname
-    r"(?(1)(?::([^:/]+))?|:)"  # 4. :<optional port> if scheme else :
-    r"(.*[^/])/?$"  # 5. path
-)
+def default_download_filename(url: str) -> str:
+    """This method computes a default file name for a given URL.
+    Note that it makes no request, so this is not the same as the
+    option curl -O, which uses the remote file name from the response
+    header."""
+    parsed_url = urllib.parse.urlparse(url)
+    # Only use the last path component + params + query + fragment
+    name = urllib.parse.urlunparse(
+        parsed_url._replace(scheme="", netloc="", path=posixpath.basename(parsed_url.path))
+    )
+    valid_name = sanitize_filename(name)
 
+    # Don't download to hidden files please
+    if valid_name[0] == ".":
+        valid_name = "_" + valid_name[1:]
 
-def parse_git_url(url):
-    """Parse git URL into components.
-
-    This parses URLs that look like:
-
-    * ``https://host.com:443/path/to/repo.git``, or
-    * ``git@host.com:path/to/repo.git``
-
-    Anything not matching those patterns is likely a local
-    file or invalid.
-
-    Returned components are as follows (optional values can be ``None``):
-
-    1. ``scheme`` (optional): git, ssh, http, https
-    2. ``user`` (optional): ``git@`` for github, username for http or ssh
-    3. ``hostname``: domain of server
-    4. ``port`` (optional): port on server
-    5. ``path``: path on the server, e.g. spack/spack
-
-    Returns:
-        (tuple): tuple containing URL components as above
-
-    Raises ``ValueError`` for invalid URLs.
-    """
-    match = re.match(git_re, url)
-    if not match:
-        raise ValueError("bad git URL: %s" % url)
-
-    # initial parse
-    scheme, user, hostname, port, path = match.groups()
-
-    # special handling for ~ paths (they're never absolute)
-    if path.startswith("/~"):
-        path = path[1:]
-
-    if port is not None:
-        try:
-            port = int(port)
-        except ValueError:
-            raise ValueError("bad port in git url: %s" % url)
-
-    return (scheme, user, hostname, port, path)
+    return valid_name
