@@ -1,4 +1,4 @@
-# Copyright 2013-2023 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2024 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -14,11 +14,12 @@ from llnl.util import filesystem, tty
 from llnl.util.tty import color
 
 import spack.cmd
-import spack.cmd.common.arguments as arguments
 import spack.config
+import spack.error
 import spack.modules
 import spack.modules.common
 import spack.repo
+from spack.cmd.common import arguments
 
 description = "manipulate module files"
 section = "environment"
@@ -124,13 +125,13 @@ def check_module_set_name(name):
     names = [k for k in modules if k != "prefix_inspections"]
 
     if not names:
-        raise spack.config.ConfigError(
+        raise spack.error.ConfigError(
             f"Module set configuration is missing. Cannot use module set '{name}'"
         )
 
     pretty_names = "', '".join(names)
 
-    raise spack.config.ConfigError(
+    raise spack.error.ConfigError(
         f"Cannot use invalid module set '{name}'.",
         f"Valid module set names are: '{pretty_names}'.",
     )
@@ -172,7 +173,7 @@ def loads(module_type, specs, args, out=None):
     modules = list(
         (
             spec,
-            spack.modules.common.get_module(
+            spack.modules.get_module(
                 module_type,
                 spec,
                 get_full_path=False,
@@ -221,7 +222,7 @@ def find(module_type, specs, args):
 
     try:
         modules = [
-            spack.modules.common.get_module(
+            spack.modules.get_module(
                 module_type,
                 spec,
                 args.full_path,
@@ -232,7 +233,7 @@ def find(module_type, specs, args):
         ]
 
         modules.append(
-            spack.modules.common.get_module(
+            spack.modules.get_module(
                 module_type,
                 single_spec,
                 args.full_path,
@@ -388,21 +389,15 @@ def modules_cmd(parser, args, module_type, callbacks=callbacks):
         callbacks[args.subparser_name](module_type, specs, args)
 
     except MultipleSpecsMatch:
-        msg = "the constraint '{query}' matches multiple packages:\n"
+        query = " ".join(str(s) for s in args.constraint_specs)
+        msg = f"the constraint '{query}' matches multiple packages:\n"
         for s in specs:
             spec_fmt = "{hash:7} {name}{@version}{%compiler}"
             spec_fmt += "{compiler_flags}{variants}{arch=architecture}"
             msg += "\t" + s.cformat(spec_fmt) + "\n"
-        tty.error(msg.format(query=args.constraint))
-        tty.die(
-            "In this context exactly **one** match is needed: "
-            "please specify your constraints better."
-        )
+        tty.die(msg, "In this context exactly *one* match is needed.")
 
     except NoSpecMatches:
-        msg = "the constraint '{query}' matches no package."
-        tty.error(msg.format(query=args.constraint))
-        tty.die(
-            "In this context exactly **one** match is needed: "
-            "please specify your constraints better."
-        )
+        query = " ".join(str(s) for s in args.constraint_specs)
+        msg = f"the constraint '{query}' matches no package."
+        tty.die(msg, "In this context exactly *one* match is needed.")

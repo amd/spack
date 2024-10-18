@@ -1,4 +1,4 @@
-# Copyright 2013-2023 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2024 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -11,6 +11,7 @@ import llnl.util.tty.colify as colify
 import llnl.util.tty.color as color
 
 import spack.platforms
+import spack.spec
 
 description = "print architecture information about this machine"
 section = "system"

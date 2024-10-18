@@ -1,4 +1,4 @@
-# Copyright 2013-2023 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2024 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -15,6 +15,8 @@ class Jsoncpp(CMakePackage, MesonPackage):
     homepage = "https://github.com/open-source-parsers/jsoncpp"
     url = "https://github.com/open-source-parsers/jsoncpp/archive/1.7.3.tar.gz"
     tags = ["windows"]
+
+    license("Public-Domain")
 
     version("1.9.5", sha256="f409856e5920c18d0c2fb85276e24ee607d2a09b5e7d5f0a371368903c275da2")
     version("1.9.4", sha256="e34a628a8142643b976c7233ef381457efad79468c67cb1ae0b83a33d7493999")
@@ -33,6 +35,8 @@ class Jsoncpp(CMakePackage, MesonPackage):
     version("1.7.4", sha256="10dcd0677e80727e572a1e462193e51a5fde3e023b99e144b2ee1a469835f769")
     version("1.7.3", sha256="1cfcad14054039ba97c22531888796cb9369e6353f257aacaad34fda956ada53")
 
+    depends_on("cxx", type="build")  # generated
+
     # From 1.9.3 onwards CMAKE_CXX_STANDARD is finally set to 11.
     variant(
         "cxxstd",
@@ -47,7 +51,7 @@ class Jsoncpp(CMakePackage, MesonPackage):
 
     with when("build_system=cmake"):
         depends_on("cmake@3.1:", type="build")
-        depends_on("cmake@1.9:", when="@1.9:", type="build")
+        depends_on("cmake@3.9:", when="@1.9:", type="build")
 
     with when("build_system=meson"):
         depends_on("meson@0.49.0:", type="build")

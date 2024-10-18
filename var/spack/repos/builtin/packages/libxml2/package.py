@@ -1,9 +1,12 @@
-# Copyright 2013-2023 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2024 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 import os
 
+import llnl.util.filesystem as fs
+
+import spack.builder
 from spack.build_systems import autotools, nmake
 from spack.package import *
 
@@ -13,7 +16,7 @@ class Libxml2(AutotoolsPackage, NMakePackage):
     project (but usable outside of the Gnome platform), it is free
     software available under the MIT License."""
 
-    homepage = "http://xmlsoft.org"
+    homepage = "https://gitlab.gnome.org/GNOME/libxml2/-/wikis"
     url = "https://download.gnome.org/sources/libxml2/2.9/libxml2-2.9.13.tar.xz"
     list_url = "https://gitlab.gnome.org/GNOME/libxml2/-/releases"
 
@@ -24,6 +27,8 @@ class Libxml2(AutotoolsPackage, NMakePackage):
             url = "https://download.gnome.org/sources/libxml2/{0}/libxml2-{1}.tar.xz"
             return url.format(version.up_to(2), version)
         return "http://xmlsoft.org/sources/libxml2-{0}.tar.gz".format(version)
+
+    license("MIT")
 
     version("2.10.3", sha256="5d2cc3d78bec3dbe212a9d7fa629ada25a7da928af432c93060ff5c17ee28a9c")
     version("2.10.2", sha256="d240abe6da9c65cb1900dd9bf3a3501ccf88b3c2a1cb98317d03f272dda5b265")
@@ -38,6 +43,8 @@ class Libxml2(AutotoolsPackage, NMakePackage):
     version("2.9.4", sha256="ffb911191e509b966deb55de705387f14156e1a56b21824357cdf0053233633c")
     version("2.9.2", sha256="5178c30b151d044aefb1b08bf54c3003a0ac55c59c866763997529d60770d5bc")
     version("2.7.8", sha256="cda23bc9ebd26474ca8f3d67e7d1c4a1f1e7106364b690d822e009fdc3c417ec")
+
+    depends_on("c", type="build")  # generated
 
     variant("python", default=False, description="Enable Python support")
     variant("shared", default=True, description="Build shared library")
@@ -74,8 +81,8 @@ class Libxml2(AutotoolsPackage, NMakePackage):
     # Use NAN/INFINITY if available to avoid SIGFPE
     # See https://gitlab.gnome.org/GNOME/libxml2/-/merge_requests/186
     patch(
-        "https://gitlab.gnome.org/GNOME/libxml2/-/commit/c9925454fd384a17c8c03d358c6778a552e9287b.patch",
-        sha256="3e06d42596b105839648070a5921157fe284b932289ffdbfa304ddc3457e5637",
+        "https://gitlab.gnome.org/GNOME/libxml2/-/commit/c9925454fd384a17c8c03d358c6778a552e9287b.diff",
+        sha256="5dc43fed02b443d2563a502a52caafe39477c06fc30b70f786d5ed3eb5aea88d",
         when="@2.9.11:2.9.14",
     )
     build_system(conditional("nmake", when="platform=windows"), "autotools", default="autotools")
@@ -197,16 +204,16 @@ class Libxml2(AutotoolsPackage, NMakePackage):
             xmllint("--dtdvalid", dtd_path, data_dir.join("info.xml"))
 
 
-class RunAfter:
+class BaseBuilder(metaclass=spack.builder.PhaseCallbacksMeta):
     @run_after("install")
     @on_package_attributes(run_tests=True)
     def import_module_test(self):
-        if "+python" in self.spec:
+        if self.spec.satisfies("+python"):
             with working_dir("spack-test", create=True):
                 python("-c", "import libxml2")
 
 
-class AutotoolsBuilder(autotools.AutotoolsBuilder, RunAfter):
+class AutotoolsBuilder(BaseBuilder, autotools.AutotoolsBuilder):
     def configure_args(self):
         spec = self.spec
 
@@ -215,7 +222,7 @@ class AutotoolsBuilder(autotools.AutotoolsBuilder, RunAfter):
             "--with-iconv={0}".format(spec["iconv"].prefix),
         ]
 
-        if "+python" in spec:
+        if spec.satisfies("+python"):
             args.extend(
                 [
                     "--with-python={0}".format(spec["python"].home),
@@ -232,7 +239,7 @@ class AutotoolsBuilder(autotools.AutotoolsBuilder, RunAfter):
         return args
 
 
-class NMakeBuilder(nmake.NMakeBuilder, RunAfter):
+class NMakeBuilder(BaseBuilder, nmake.NMakeBuilder):
     phases = ("configure", "build", "install")
 
     @property
@@ -241,20 +248,31 @@ class NMakeBuilder(nmake.NMakeBuilder, RunAfter):
 
     @property
     def build_directory(self):
-        return os.path.join(self.stage.source_path, "win32")
+        return fs.windows_sfn(os.path.join(self.stage.source_path, "win32"))
 
     def configure(self, pkg, spec, prefix):
         with working_dir(self.build_directory):
             opts = [
-                "prefix=%s" % prefix,
+                "prefix=%s" % fs.windows_sfn(prefix),
                 "compiler=msvc",
                 "iconv=no",
                 "zlib=yes",
                 "lzma=yes",
-                "lib=%s" % ";".join((spec["zlib-api"].prefix.lib, spec["xz"].prefix.lib)),
+                "lib=%s"
+                % ";".join(
+                    (
+                        fs.windows_sfn(spec["zlib-api"].prefix.lib),
+                        fs.windows_sfn(spec["xz"].prefix.lib),
+                    )
+                ),
                 "include=%s"
-                % ";".join((spec["zlib-api"].prefix.include, spec["xz"].prefix.include)),
+                % ";".join(
+                    (
+                        fs.windows_sfn(spec["zlib-api"].prefix.include),
+                        fs.windows_sfn(spec["xz"].prefix.include),
+                    )
+                ),
             ]
-            if "+python" in spec:
+            if spec.satisfies("+python"):
                 opts.append("python=yes")
             cscript("configure.js", *opts)

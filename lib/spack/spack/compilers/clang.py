@@ -1,11 +1,10 @@
-# Copyright 2013-2023 Lawrence Livermore National Security, LLC and other
+# Copyright 2013-2024 Lawrence Livermore National Security, LLC and other
 # Spack Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
 import os
 import re
-import sys
 
 import llnl.util.lang
 
@@ -32,18 +31,6 @@ fc_mapping = [
 
 
 class Clang(Compiler):
-    # Subclasses use possible names of C compiler
-    cc_names = ["clang"]
-
-    # Subclasses use possible names of C++ compiler
-    cxx_names = ["clang++"]
-
-    # Subclasses use possible names of Fortran 77 compiler
-    f77_names = ["flang", "gfortran", "xlf_r"]
-
-    # Subclasses use possible names of Fortran 90 compiler
-    fc_names = ["flang", "gfortran", "xlf90_r"]
-
     version_argument = "--version"
 
     @property
@@ -56,7 +43,6 @@ class Clang(Compiler):
             "-gdwarf-5",
             "-gline-tables-only",
             "-gmodules",
-            "-gz",
             "-g",
         ]
 
@@ -98,6 +84,8 @@ class Clang(Compiler):
 
     openmp_flag = "-fopenmp"
 
+    # C++ flags based on CMake Modules/Compiler/Clang.cmake
+
     @property
     def cxx11_flag(self):
         if self.real_version < Version("3.3"):
@@ -123,6 +111,24 @@ class Clang(Compiler):
         return "-std=c++17"
 
     @property
+    def cxx20_flag(self):
+        if self.real_version < Version("5.0"):
+            raise UnsupportedCompilerFlag(self, "the C++20 standard", "cxx20_flag", "< 5.0")
+        elif self.real_version < Version("11.0"):
+            return "-std=c++2a"
+        else:
+            return "-std=c++20"
+
+    @property
+    def cxx23_flag(self):
+        if self.real_version < Version("12.0"):
+            raise UnsupportedCompilerFlag(self, "the C++23 standard", "cxx23_flag", "< 12.0")
+        elif self.real_version < Version("17.0"):
+            return "-std=c++2b"
+        else:
+            return "-std=c++23"
+
+    @property
     def c99_flag(self):
         return "-std=c99"
 
@@ -144,7 +150,10 @@ class Clang(Compiler):
     def c23_flag(self):
         if self.real_version < Version("9.0"):
             raise UnsupportedCompilerFlag(self, "the C23 standard", "c23_flag", "< 9.0")
-        return "-std=c2x"
+        elif self.real_version < Version("18.0"):
+            return "-std=c2x"
+        else:
+            return "-std=c23"
 
     @property
     def cc_pic_flag(self):
@@ -173,25 +182,13 @@ class Clang(Compiler):
 
         match = re.search(
             # Normal clang compiler versions are left as-is
-            r"clang version ([^ )\n]+)-svn[~.\w\d-]*|"
+            r"(?:clang|flang-new) version ([^ )\n]+)-svn[~.\w\d-]*|"
             # Don't include hyphenated patch numbers in the version
             # (see https://github.com/spack/spack/pull/14365 for details)
-            r"clang version ([^ )\n]+?)-[~.\w\d-]*|" r"clang version ([^ )\n]+)",
+            r"(?:clang|flang-new) version ([^ )\n]+?)-[~.\w\d-]*|"
+            r"(?:clang|flang-new) version ([^ )\n]+)",
             output,
         )
         if match:
             ver = match.group(match.lastindex)
         return ver
-
-    @classmethod
-    def fc_version(cls, fc):
-        # We could map from gcc/gfortran version to clang version, but on macOS
-        # we normally mix any version of gfortran with any version of clang.
-        if sys.platform == "darwin":
-            return cls.default_version("clang")
-        else:
-            return cls.default_version(fc)
-
-    @classmethod
-    def f77_version(cls, f77):
-        return cls.fc_version(f77)
